@@ -36,7 +36,8 @@ static INT i2c_read_reg(ID dev, UW slave_addr, UB reg_addr)
     ex.rcv_data = &rx;
     ex.rcv_size = 1;
 
-    ER err = tk_wri_dev(dev, TDN_I2C_EXEC, &ex, sizeof(T_I2C_EXEC), TMO_FEVR);
+    SZ asize;
+    ER err = tk_swri_dev(dev, TDN_I2C_EXEC, &ex, sizeof(T_I2C_EXEC), &asize);
     if (err < 0) return (INT)err;
 
     return (INT)rx;
@@ -48,16 +49,16 @@ static INT i2c_read_reg(ID dev, UW slave_addr, UB reg_addr)
 static ER i2c_write_reg(ID dev, UW slave_addr, UB reg_addr, UB value)
 {
     UB tx[2] = { reg_addr, value };
-    UB dummy;
     T_I2C_EXEC ex;
 
     ex.sadr     = slave_addr;
     ex.snd_data = tx;
     ex.snd_size = 2;
-    ex.rcv_data = &dummy;
-    ex.rcv_size = 1;
+    ex.rcv_data = NULL;
+    ex.rcv_size = 0;  /* Clean write-only transaction, no dummy read */
 
-    return tk_wri_dev(dev, TDN_I2C_EXEC, &ex, sizeof(T_I2C_EXEC), TMO_FEVR);
+    SZ asize;
+    return tk_swri_dev(dev, TDN_I2C_EXEC, &ex, sizeof(T_I2C_EXEC), &asize);
 }
 
 
@@ -416,12 +417,13 @@ static void sensor_loop(ID dev)
         ex_a.rcv_data = accel_data;
         ex_a.rcv_size = 6;
 
-        ER err_a = tk_wri_dev(dev, TDN_I2C_EXEC, &ex_a, sizeof(T_I2C_EXEC), TMO_FEVR);
+        SZ asize_a;
+        ER err_a = tk_swri_dev(dev, TDN_I2C_EXEC, &ex_a, sizeof(T_I2C_EXEC), &asize_a);
 
         if (err_a < 0) {
             consecutive_errors++;
             INT err_src = -(err_a + 100);
-            tm_printf((UB*)"[WARN] I2C err #%d (src=0x%x) ", consecutive_errors, err_src);
+            tm_printf((UB*)"[WARN] I2C err #%d (src=0x%x, err_a=%d) ", consecutive_errors, err_src, err_a);
 
             if (consecutive_errors >= MAX_I2C_RETRIES) {
                 /* Bus is stuck — re-init sensors and reset counter */
@@ -439,8 +441,8 @@ static void sensor_loop(ID dev)
         /* Brief gap between transfers to let TWIM breathe */
         tk_dly_tsk(10);
 
-        /* --- Magnetometer: 6-byte burst read from 0x68 with auto-inc --- */
-        UB mag_reg = LSM303_OUTX_L_REG_M | 0x80;
+        /* --- Magnetometer: 6-byte burst read from 0x68 --- */
+        UB mag_reg = LSM303_OUTX_L_REG_M;
         UB mag_data[6] = {0};
         T_I2C_EXEC ex_m;
 
@@ -450,7 +452,8 @@ static void sensor_loop(ID dev)
         ex_m.rcv_data = mag_data;
         ex_m.rcv_size = 6;
 
-        ER err_m = tk_wri_dev(dev, TDN_I2C_EXEC, &ex_m, sizeof(T_I2C_EXEC), TMO_FEVR);
+        SZ asize_m;
+        ER err_m = tk_swri_dev(dev, TDN_I2C_EXEC, &ex_m, sizeof(T_I2C_EXEC), &asize_m);
 
         /* Reset error counter on any successful read */
         consecutive_errors = 0;
