@@ -10,6 +10,13 @@
 #define PIN_SCL 8
 #define PIN_SDA 16
 
+/* GPIO P0 */
+#define GPIO_P0_OUTSET      0x50000508
+#define GPIO_P0_OUTCLR      0x5000050C
+#define GPIO_P0_IN          0x50000510
+#define GPIO_P0_DIRSET      0x50000518
+#define GPIO_P0_PIN_CNF(n)  (0x50000700 + (n)*4)
+
 /* TWIM0 Hardware Registers */
 #define TWIM0_BASE          0x40003000
 #define TWIM_TASKS_STARTRX  (TWIM0_BASE + 0x000)
@@ -29,6 +36,69 @@
 #define TWIM_RXD_PTR        (TWIM0_BASE + 0x534)
 #define TWIM_RXD_MAXCNT     (TWIM0_BASE + 0x538)
 #define TWIM_ADDRESS        (TWIM0_BASE + 0x588)
+
+LOCAL void tiny_delay(void) { for (volatile int i = 0; i < 80; i++); }
+
+/* ---- GPIO-level I2C bus clear (I2C spec 3.1.16) ---- */
+LOCAL void i2c_bus_clear(void)
+{
+    out_w(TWIM_ENABLE, 0);
+
+    out_w(GPIO_P0_PIN_CNF(PIN_SCL), 1);  /* output */
+    out_w(GPIO_P0_PIN_CNF(PIN_SDA), 1);
+    out_w(GPIO_P0_OUTSET, (1U << PIN_SCL) | (1U << PIN_SDA));
+    tiny_delay();
+
+    out_w(GPIO_P0_PIN_CNF(PIN_SDA), 0);  /* input to read */
+    for (int c = 0; c < 18; c++) {       
+        out_w(GPIO_P0_OUTCLR, (1U << PIN_SCL));
+        tiny_delay();
+        out_w(GPIO_P0_OUTSET, (1U << PIN_SCL));
+        tiny_delay();
+    }
+
+    /* manual STOP */
+    out_w(GPIO_P0_PIN_CNF(PIN_SDA), 1);
+    out_w(GPIO_P0_OUTCLR, (1U << PIN_SDA));
+    tiny_delay();
+    out_w(GPIO_P0_OUTSET, (1U << PIN_SCL));
+    tiny_delay();
+    out_w(GPIO_P0_OUTSET, (1U << PIN_SDA));
+    tiny_delay();
+
+    /* release pins */
+    out_w(GPIO_P0_PIN_CNF(PIN_SCL), 0);
+    out_w(GPIO_P0_PIN_CNF(PIN_SDA), 0);
+
+    /* full TWIM re-init */
+    out_w(TWIM_PSEL_SCL, PIN_SCL);
+    out_w(TWIM_PSEL_SDA, PIN_SDA);
+    out_w(TWIM_FREQUENCY, 0x01980000);
+    out_w(TWIM_SHORTS, 0);
+    out_w(TWIM_ENABLE, 6);
+}
+
+/* ---- Error handler: clear + bus clear + return error code ---- */
+LOCAL W twim_handle_error(void)
+{
+    out_w(TWIM_EVENTS_ERROR, 0);
+    UW src = in_w(TWIM_ERRORSRC);
+    out_w(TWIM_ERRORSRC, src);  /* W1C */
+
+    /* try graceful stop first */
+    out_w(TWIM_EVENTS_STOPPED, 0);
+    out_w(TWIM_SHORTS, 0);
+    out_w(TWIM_TASKS_STOP, 1);
+    for (volatile int t = 0; t < 50000; t++) {
+        if (in_w(TWIM_EVENTS_STOPPED) != 0) break;
+    }
+
+    /* nuclear option: GPIO bus clear + full re-init */
+    i2c_bus_clear();
+
+    /* encode error source in return: -100 - src */
+    return (W)(-(100 + (INT)src));
+}
 
 EXPORT W dev_i2c_llctl( UW unit, INT cmd, UW parm1, UW parm2, UW *parm3 )
 {
@@ -57,21 +127,18 @@ EXPORT W dev_i2c_llctl( UW unit, INT cmd, UW parm1, UW parm2, UW *parm3 )
         } else if (ex->snd_size > 0) {
             out_w(TWIM_TXD_PTR, (UW)ex->snd_data);
             out_w(TWIM_TXD_MAXCNT, ex->snd_size);
+            out_w(TWIM_RXD_MAXCNT, 0);
             out_w(TWIM_SHORTS, (1 << 9)); // LASTTX_STOP
             out_w(TWIM_TASKS_STARTTX, 1);
         }
 
         while(in_w(TWIM_EVENTS_STOPPED) == 0) {
             if (in_w(TWIM_EVENTS_ERROR) != 0) {
-                // HARDWARE ERROR RECOVERY
-                out_w(TWIM_EVENTS_ERROR, 0);
-                UW err_val = in_w(TWIM_ERRORSRC);
-                out_w(TWIM_ERRORSRC, err_val); // Clear the error flags
-                out_w(TWIM_TASKS_RESUME, 1);   // Resume the bus
-                out_w(TWIM_TASKS_STOP, 1);     // Force a clean stop condition
-                return -34; 
+                return twim_handle_error();
             }
         }
+        
+        out_w(TWIM_SHORTS, 0);
         return sizeof(T_I2C_EXEC);
     }
     return E_OK;

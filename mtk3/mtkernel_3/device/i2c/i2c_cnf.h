@@ -1,4 +1,4 @@
-﻿/*
+/*
  *----------------------------------------------------------------------
  *    Device Driver for micro T-Kernel for μT-Kernel 3.00.03
  *
@@ -39,5 +39,9 @@
 #ifdef CPU_RX231
 #include "sysdepend/rx231/i2c_cnf_rx231.h"
 #endif		/* CPU_RX231 */
+
+#ifdef CPU_NRF5
+/* nRF5: No additional config needed — defaults are sufficient */
+#endif		/* CPU_NRF5 */
 
 #endif		/* __DEVCNF_I2C_H__ */
