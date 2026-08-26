@@ -10,7 +10,7 @@ CFLAGS := -mcpu=cortex-m4 -mthumb -ffreestanding \
     -std=gnu11 \
     -O0 -g3 \
     -MMD -MP \
-    -mfpu=fpv4-sp-d16 -mfloat-abi=hard
+    -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DPROHIBIT_DEF_SIZE_T
 
 ASFLAGS := -mcpu=cortex-m4 -mthumb -ffreestanding \
     -x assembler-with-cpp \

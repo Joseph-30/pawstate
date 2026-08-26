@@ -1,4 +1,4 @@
-﻿/*
+/*
  *----------------------------------------------------------------------
  *    Device Driver for micro T-Kernel for μT-Kernel 3.00.05
  *
@@ -26,8 +26,7 @@
 
 /* Default value for attribute data */
 #define	DEVCNF_SER_SPEED	115200		// Communication speed (baud rate)
-#define DEVCNF_SER_MODE		(DEV_SER_MODE_CTSEN | DEV_SER_MODE_RTSEN | \
-				DEV_SER_MODE_8BIT | DEV_SER_MODE_1STOP | DEV_SER_MODE_PNON)
+#define DEVCNF_SER_MODE		(DEV_SER_MODE_8BIT | DEV_SER_MODE_1STOP | DEV_SER_MODE_PNON)
 						// Mode: Hard flow control enable,
 						// 	data 8bit, stop 1bit, no parity
 #define	DEVCNF_SER_SND_TMO	TMO_FEVR	// Send timeout 

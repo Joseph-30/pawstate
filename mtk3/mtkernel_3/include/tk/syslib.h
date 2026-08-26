@@ -123,6 +123,8 @@ IMPORT ER MUnlock( FastMLock *lock, INT no );
 
 #ifndef PROHIBIT_DEF_SIZE_T
 typedef SZ		size_t;
+#else
+#include <stddef.h>
 #endif
 
 IMPORT void *Kmalloc( size_t size );

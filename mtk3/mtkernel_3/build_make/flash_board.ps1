@@ -1,9 +1,9 @@
 Write-Host "=== Cleaning previous build ===" -ForegroundColor Cyan
-make clean
+make PROJ_NAME=sample-pawstate clean
 
 Write-Host ""
 Write-Host "=== Compiling firmware ===" -ForegroundColor Cyan
-make all
+make PROJ_NAME=sample-pawstate all
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
