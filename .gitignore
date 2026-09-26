@@ -12,15 +12,11 @@ ML_canine_data/
 *.elf
 *.map
 *.hex
+!/mtkernel_3.hex
 *.bin
 
 # Temporary scratch scripts used during development
-analyze_ranges.py
 check_model_behavior.py
 debug_model.py
 test_firmware_simulation.py
-test_model_fix.py
-verify_embedded_model.py
 
-# Ignore duplicated sample-pawstate outside the build tree if it's untracked
-/sample-pawstate/
