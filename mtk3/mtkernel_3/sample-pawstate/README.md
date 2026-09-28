@@ -10,7 +10,7 @@ PawState is a collar-mounted embedded system that classifies a dog's emotional a
 ### Behavioural States Classified
 
 | State | Description | LED Pattern |
-|-------|-------------|-------------|
+| ------- | ------------- | ------------- |
 | **Resting** | Lying down or sitting still | Zzz sleep symbol |
 | **Walking** | Steady locomotion, regular gait | Right arrow |
 | **Playing** | High-energy irregular motion | Star |
@@ -34,7 +34,7 @@ PawState is a collar-mounted embedded system that classifies a dog's emotional a
 ### BBC micro:bit v2 Specifications
 
 | Component | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | SoC | Nordic nRF52833 (ARM Cortex-M4F @ 64 MHz) |
 | Flash | 512 KB |
 | RAM | 128 KB |
@@ -115,7 +115,7 @@ sample-pawstate/
 ### μT-Kernel 3.0 Kernel Objects Used
 
 | Object | Type | Purpose |
-|--------|------|---------|
+| -------- | ------ | --------- |
 | `sem_i2c` | Semaphore | I2C bus mutual exclusion |
 | `sem_feature_buf` | Semaphore | Feature vector buffer protection |
 | `flg_pipeline` | Event Flag | Inter-task signaling (5 flag bits) |
@@ -147,10 +147,11 @@ If you do not have a dog (or want to test on a desk), you can verify the entire 
    - **Stop Bits**: 1
 
 You will see `tm_printf` log messages dynamically printing out the internal state. For example:
+
 - **Normal state change**: `[ML] State changed to: Walking (Confidence: 85%)`
 - **Anxiety alert**: `[ML] *** ANXIETY SPIKE DETECTED! Triggering Alarm ***`
 
-**To test the Alert Freeze (Square):** Simply leave the board completely still on a flat surface. 
+**To test the Alert Freeze (Square):** Simply leave the board completely still on a flat surface.
 **To test Anxiety Pacing / Playing:** Vigorously shake the micro:bit back and forth. You should see the LED matrix flash an exclamation mark, hear the speaker beep, and see the `ANXIETY SPIKE` log in the console.
 
 ---
@@ -375,7 +376,7 @@ print(f"Quantised model accuracy: {accuracy:.2%}")
 All tuneable parameters are in `include/pawstate_config.h`:
 
 | Parameter | Value | Description |
-|-----------|-------|-------------|
+| ----------- | ------- | ------------- |
 | `IMU_SAMPLE_RATE_HZ` | 50 | IMU sampling frequency |
 | `FEATURE_WINDOW_SIZE` | 125 | Sliding window (2.5s at 50 Hz) |
 | `FEATURE_VECTOR_DIM` | 6 | Number of extracted features |
@@ -392,7 +393,7 @@ All tuneable parameters are in `include/pawstate_config.h`:
 ## Dependencies
 
 | Dependency | Version | Source | Purpose |
-|-----------|---------|--------|---------|
+| ----------- | --------- | -------- | --------- |
 | μT-Kernel 3.0 | v3.00.07 | [tron-forum/mtkernel_3](https://github.com/tron-forum/mtkernel_3) | RTOS kernel |
 | mtk3_bsp2 | latest | [tron-forum/mtk3_bsp2](https://github.com/tron-forum/mtk3_bsp2) | nRF52833 board support |
 | GNU Arm Toolchain | 12.x+ | [developer.arm.com](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/downloads) | Cross-compiler |
@@ -405,7 +406,7 @@ All tuneable parameters are in `include/pawstate_config.h`:
 ## Team
 
 | Member | Role | Responsibility |
-|--------|------|----------------|
+| -------- | ------ | ---------------- |
 | **Joseph P George** | CEO/CTO, Team Lead | RTOS firmware, system architecture |
 | **Kasinath Salim** | Head of AI/ML | Model training, signal processing |
 | **Evan George Varghese** | Head of Product/Hardware | Hardware integration, mobile app |
