@@ -14,7 +14,7 @@ TARGET := _MICROBIT_
 
 RM := rm -rf
 
-INCPATH = -I"../include" -I"../config" -I"../kernel/knlinc"
+INCPATH = -I"../include" -I"../config" -I"../kernel/knlinc" -I"../sample-pawstate/include" -I"../sample-pawstate/app" -I"../sample-pawstate/drivers" -I"../sample-pawstate/ml" -I"../sample-pawstate/util"
 
 -include sources.mk
 
@@ -44,7 +44,7 @@ ifeq ($(TARGET), _MICROBIT_)
 include microbit.mk
 endif
 
-APP = app_sample
+APP = sample-pawstate
 -include mtkernel_3/$(firstword $(subst /, ,$(APP)))/subdir.mk
 
 ifneq ($(MAKECMDGOALS),clean)

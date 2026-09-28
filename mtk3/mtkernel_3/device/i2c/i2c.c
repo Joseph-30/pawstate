@@ -86,7 +86,7 @@ LOCAL ER write_atr(T_I2C_DCB *p_dcb, T_DEVREQ *req)
 		if(req->size >= sizeof(T_I2C_EXEC)) {
 			p_ex = (T_I2C_EXEC*)(req->buf);
 			if(p_ex->snd_size <=0 || p_ex->snd_size > DEVCNF_I2C_MAX_SDATSZ) return E_PAR;
-			if(p_ex->rcv_size <=0 || p_ex->rcv_size > DEVCNF_I2C_MAX_RDATSZ) return E_PAR;
+			if(p_ex->rcv_size < 0 || p_ex->rcv_size > DEVCNF_I2C_MAX_RDATSZ) return E_PAR;
 
 			rtn = dev_i2c_llctl(p_dcb->unit, LLD_I2C_EXEC, req->start, req->size, (UW*)p_ex);
 			if(rtn > 0) {

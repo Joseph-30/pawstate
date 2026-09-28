@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PawState — Real-Time Canine Emotion & Activity Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --accent-green: #10b981;
+      --accent-blue: #3b82f6;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #8b5cf6;
+      --led-off: #334155;
+      --led-on: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: white;
+      font-weight: 700;
+      font-size: 1.25rem;
+      padding: 8px 12px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
+    }
+
+    .title-group h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; }
+    .title-group p { font-size: 0.78rem; color: var(--text-muted); }
+
+    .conn-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid var(--card-border);
+      padding: 6px 12px;
+      border-radius: 20px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+    .status-dot.active {
+      background: var(--accent-green);
+      box-shadow: 0 0 10px var(--accent-green);
+    }
+
+    /* Alarm Banner */
+    .alarm-banner {
+      width: 100%;
+      max-width: 900px;
+      background: linear-gradient(90deg, #b91c1c, #dc2626);
+      border: 1px solid #f87171;
+      color: white;
+      padding: 14px 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      animation: pulse 1s infinite alternate;
+      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+    }
+    .alarm-banner.active { display: flex; }
+
+    @keyframes pulse {
+      0% { opacity: 0.85; transform: scale(0.995); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Main Grid */
+    .dashboard-grid {
+      width: 100%;
+      max-width: 900px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* State Display */
+    .state-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 10px 0;
+    }
+
+    .state-badge {
+      font-size: 1.8rem;
+      font-weight: 700;
+      padding: 10px 22px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      transition: all 0.3s ease;
+    }
+    .state-badge.resting { color: var(--accent-purple); border-color: var(--accent-purple); background: rgba(139, 92, 246, 0.12); }
+    .state-badge.walking { color: var(--accent-green); border-color: var(--accent-green); background: rgba(16, 185, 129, 0.12); }
+    .state-badge.playing { color: var(--accent-blue); border-color: var(--accent-blue); background: rgba(59, 130, 246, 0.12); }
+    .state-badge.pacing  { color: var(--accent-amber); border-color: var(--accent-amber); background: rgba(245, 158, 11, 0.15); }
+    .state-badge.freeze  { color: var(--accent-red); border-color: var(--accent-red); background: rgba(239, 68, 68, 0.15); }
+    .state-badge.unknown { color: var(--text-muted); border-color: var(--text-muted); }
+
+    .confidence-meter {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+    .confidence-value {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* LED Matrix Mirror */
+    .matrix-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .microbit-board {
+      background: #111827;
+      border: 3px solid #374151;
+      border-radius: 14px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(5, 26px);
+      grid-template-rows: repeat(5, 26px);
+      gap: 8px;
+      box-shadow: inset 0 0 16px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .led {
+      width: 26px;
+      height: 26px;
+      border-radius: 4px;
+      background: var(--led-off);
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+    }
+    .led.on {
+      background: var(--led-on);
+      box-shadow: 0 0 12px #ef4444, 0 0 20px #f87171;
+    }
+
+    /* Probabilities */
+    .prob-row {
+      margin-bottom: 12px;
+    }
+    .prob-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+    }
+    .bar-bg {
+      height: 8px;
+      background: #334155;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    /* Event Log */
+    .log-list {
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .log-entry {
+      padding: 6px 10px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 6px;
+      border-left: 3px solid var(--primary);
+      display: flex;
+      justify-content: space-between;
+    }
+    .log-entry.alert {
+      border-left-color: var(--accent-red);
+      background: rgba(239, 68, 68, 0.12);
+      color: #fca5a5;
+    }
+
+    /* Controls */
+    .controls {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+    .btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .btn:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+    .btn.primary {
+      background: #0284c7;
+      border-color: #0369a1;
+      color: white;
+    }
+    .btn.primary:hover {
+      background: #0369a1;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="logo-badge">🐾 PawState</div>
+      <div class="title-group">
+        <h1>Canine Emotion & Activity Monitor</h1>
+        <p>μT-Kernel 3.0 Real-Time Telemetry Dashboard</p>
+      </div>
+    </div>
+    <div class="conn-status">
+      <span class="status-dot" id="connDot"></span>
+      <span id="connLabel">Disconnected</span>
+    </div>
+  </header>
+
+  <!-- Alarm Banner -->
+  <div class="alarm-banner" id="alarmBanner">
+    <div>
+      <strong>⚠️ ANXIETY SPIKE DETECTED!</strong>
+      <div style="font-size: 0.85rem; opacity: 0.9;">The collar has triggered an alert (Audible beep active on collar).</div>
+    </div>
+    <button class="btn" style="background: white; color: #b91c1c; border: none;" onclick="dismissAlert()">Dismiss</button>
+  </div>
+
+  <!-- Dashboard Controls -->
+  <div class="controls">
+    <button class="btn primary" id="btnSerial" onclick="connectWebSerial()">🔌 Connect via USB (Web Serial)</button>
+    <button class="btn" id="btnBridge" onclick="connectWebSocket()">🌐 Connect to Wi-Fi Bridge</button>
+    <button class="btn" id="btnSim" onclick="toggleSimulation()">🧪 Run Simulator Demo</button>
+    <button class="btn" onclick="testBeep()">🔊 Test Alarm Sound</button>
+  </div>
+
+  <div class="dashboard-grid">
+    <!-- State Card -->
+    <div class="card">
+      <div class="card-title">Current Behavioral State</div>
+      <div class="state-container">
+        <div class="state-badge unknown" id="stateBadge">Unknown</div>
+        <div class="confidence-meter">
+          Model Confidence: <span class="confidence-value" id="confValue">--%</span>
+        </div>
+      </div>
+      <div style="margin-top: 18px; font-size: 0.8rem; color: var(--text-muted); text-align: center;">
+        Target: BBC micro:bit v2 (nRF52833) · 50 Hz IMU · INT8 Inference
+      </div>
+    </div>
+
+    <!-- LED Matrix Mirror -->
+    <div class="card">
+      <div class="card-title">
+        <span>Collar 5×5 LED Display Mirror</span>
+        <span style="font-size: 0.72rem; color: var(--text-muted);">Real-Time Multiplexing</span>
+      </div>
+      <div class="matrix-wrapper">
+        <div class="microbit-board" id="ledMatrix">
+          <!-- 25 LEDs generated via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Probabilities Card -->
+    <div class="card">
+      <div class="card-title">Class Probabilities (Softmax Output)</div>
+      
+      <div class="prob-row">
+        <div class="prob-header"><span>Resting</span><span id="prob0">0%</span></div>
+        <div class="bar-bg"><div class="bar-fill" id="bar0" style="background: var(--accent-purple);"></div></div>
+      </div>
+      <div class="prob-row">
+        <div class="prob-header"><span>Walking</span><span id="prob1">0%</span></div>
+        <div class="bar-bg"><div class="bar-fill" id="bar1" style="background: var(--accent-green);"></div></div>
+      </div>
+      <div class="prob-row">
+        <div class="prob-header"><span>Playing</span><span id="prob2">0%</span></div>
+        <div class="bar-bg"><div class="bar-fill" id="bar2" style="background: var(--accent-blue);"></div></div>
+      </div>
+      <div class="prob-row">
+        <div class="prob-header"><span>Anxious Pacing</span><span id="prob3">0%</span></div>
+        <div class="bar-bg"><div class="bar-fill" id="bar3" style="background: var(--accent-amber);"></div></div>
+      </div>
+      <div class="prob-row">
+        <div class="prob-header"><span>Alert Freeze</span><span id="prob4">0%</span></div>
+        <div class="bar-bg"><div class="bar-fill" id="bar4" style="background: var(--accent-red);"></div></div>
+      </div>
+    </div>
+
+    <!-- Event History Log -->
+    <div class="card">
+      <div class="card-title">
+        <span>Behavioral Transition Log</span>
+        <button class="btn" style="padding: 2px 8px; font-size: 0.72rem;" onclick="clearLogs()">Clear</button>
+      </div>
+      <div class="log-list" id="logList">
+        <div class="log-entry">
+          <span>System initialized — ready to receive telemetry</span>
+          <span style="color: var(--text-muted);">BOOT</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 5x5 LED Matrix Patterns (Correct bit masks matching fixed drv_led_matrix.c)
+    const LED_PATTERNS = {
+      "Resting":        [0x1F, 0x08, 0x04, 0x02, 0x1F], // 5x5 Z
+      "Walking":        [0x04, 0x08, 0x1F, 0x08, 0x04], // Right arrow (-->)
+      "Playing":        [0x04, 0x0E, 0x1F, 0x0E, 0x0A], // Star
+      "Anxious Pacing": [0x04, 0x04, 0x04, 0x00, 0x04], // !
+      "Alert Freeze":   [0x1F, 0x11, 0x11, 0x11, 0x1F], // Square
+      "Unknown":        [0x0E, 0x08, 0x04, 0x00, 0x04]  // ?
+    };
+
+    // Initialize LED Matrix Grid
+    const matrixContainer = document.getElementById('ledMatrix');
+    for (let r = 0; r < 5; r++) {
+      for (let c = 0; c < 5; c++) {
+        const led = document.createElement('div');
+        led.className = 'led';
+        led.id = `led_${r}_${c}`;
+        matrixContainer.appendChild(led);
+      }
+    }
+
+    function updateLEDDisplay(stateName) {
+      const rows = LED_PATTERNS[stateName] || LED_PATTERNS["Unknown"];
+      for (let r = 0; r < 5; r++) {
+        const rowVal = rows[r];
+        for (let c = 0; c < 5; c++) {
+          const led = document.getElementById(`led_${r}_${c}`);
+          const isOn = (rowVal & (1 << c)) !== 0;
+          if (isOn) {
+            led.classList.add('on');
+          } else {
+            led.classList.remove('on');
+          }
+        }
+      }
+    }
+
+    // Audio alarm tone generator using Web Audio API
+    let audioCtx = null;
+    function playAlertSound() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = audioCtx.currentTime;
+        // 3 short 2000Hz beeps matching gpio_speaker_anxiety_alert()
+        for (let i = 0; i < 3; i++) {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(2000, now + i * 0.25);
+          gain.gain.setValueAtTime(0.15, now + i * 0.25);
+          gain.gain.setValueAtTime(0, now + i * 0.25 + 0.18);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + i * 0.25);
+          osc.stop(now + i * 0.25 + 0.18);
+        }
+      } catch (e) {
+        console.warn("Audio Context error:", e);
+      }
+    }
+
+    function testBeep() {
+      playAlertSound();
+    }
+
+    function updateStateUI(stateName, confidence, probs) {
+      const badge = document.getElementById('stateBadge');
+      badge.textContent = stateName;
+      badge.className = 'state-badge';
+      
+      const classMap = {
+        "Resting": "resting",
+        "Walking": "walking",
+        "Playing": "playing",
+        "Anxious Pacing": "pacing",
+        "Alert Freeze": "freeze"
+      };
+      badge.classList.add(classMap[stateName] || 'unknown');
+
+      document.getElementById('confValue').textContent = `${confidence}%`;
+      updateLEDDisplay(stateName);
+
+      if (probs && probs.length === 5) {
+        for (let i = 0; i < 5; i++) {
+          const pct = Math.round((probs[i] / 255) * 100);
+          document.getElementById(`bar${i}`).style.width = `${pct}%`;
+          document.getElementById(`prob${i}`).textContent = `${pct}%`;
+        }
+      }
+    }
+
+    function triggerAnxietyAlert() {
+      document.getElementById('alarmBanner').classList.add('active');
+      playAlertSound();
+    }
+
+    function dismissAlert() {
+      document.getElementById('alarmBanner').classList.remove('active');
+    }
+
+    function appendLog(message, isAlert = false) {
+      const logList = document.getElementById('logList');
+      const timeStr = new Date().toLocaleTimeString();
+      const item = document.createElement('div');
+      item.className = `log-entry ${isAlert ? 'alert' : ''}`;
+      item.innerHTML = `<span>${message}</span><span style="color: var(--text-muted);">${timeStr}</span>`;
+      logList.insertBefore(item, logList.firstChild);
+    }
+
+    function clearLogs() {
+      document.getElementById('logList').innerHTML = '';
+    }
+
+    function setConnected(status, label) {
+      const dot = document.getElementById('connDot');
+      const lbl = document.getElementById('connLabel');
+      if (status) {
+        dot.classList.add('active');
+        lbl.textContent = label || "Connected";
+      } else {
+        dot.classList.remove('active');
+        lbl.textContent = label || "Disconnected";
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Telemetry Parser for microT-Kernel 3.0 Serial Stream
+    // -------------------------------------------------------------------------
+    let lastProbs = [0, 0, 0, 0, 0];
+    function parseSerialLine(line) {
+      line = line.trim();
+      if (!line) return;
+
+      // P:0,251,0,0,0
+      if (line.startsWith('P:')) {
+        const parts = line.substring(2).split(',').map(x => parseInt(x) || 0);
+        if (parts.length === 5) {
+          lastProbs = parts;
+        }
+      }
+
+      // [ML] State changed to: Walking (Confidence: 85%)
+      const stateMatch = line.match(/\[ML\] State changed to:\s*([A-Za-z\s]+)\s*\(Confidence:\s*(\d+)%\)/);
+      if (stateMatch) {
+        const stateName = stateMatch[1].trim();
+        const conf = parseInt(stateMatch[2]);
+        updateStateUI(stateName, conf, lastProbs);
+        appendLog(`State changed: ${stateName} (${conf}%)`);
+      }
+
+      // [ML] *** ANXIETY SPIKE DETECTED!
+      if (line.includes('ANXIETY SPIKE')) {
+        triggerAnxietyAlert();
+        appendLog(`⚠️ *** ANXIETY SPIKE ALERT TRIGGERED ***`, true);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Web Serial API (Direct USB Cable in Chrome / Edge)
+    // -------------------------------------------------------------------------
+    let serialPort = null;
+    let serialReader = null;
+    async function connectWebSerial() {
+      if (!('serial' in navigator)) {
+        alert("Web Serial is supported in Google Chrome, Microsoft Edge, and Opera on PC, Mac, Linux, and Android via OTG.");
+        return;
+      }
+
+      try {
+        serialPort = await navigator.requestPort();
+        await serialPort.open({ baudRate: 115200 });
+        setConnected(true, "USB Serial Connected");
+        document.getElementById('btnSerial').textContent = "🔌 Disconnect USB";
+        document.getElementById('btnSerial').onclick = disconnectWebSerial;
+
+        const textDecoder = new TextDecoderStream();
+        serialPort.readable.pipeTo(textDecoder.writable);
+        serialReader = textDecoder.readable.getReader();
+
+        let buffer = '';
+        while (true) {
+          const { value, done } = await serialReader.read();
+          if (done) break;
+          buffer += value;
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            parseSerialLine(line);
+          }
+        }
+      } catch (err) {
+        console.error("Serial connection error:", err);
+        setConnected(false, "Serial Error / Cancelled");
+      }
+    }
+
+    async function disconnectWebSerial() {
+      if (serialReader) {
+        await serialReader.cancel();
+        serialReader = null;
+      }
+      if (serialPort) {
+        await serialPort.close();
+        serialPort = null;
+      }
+      setConnected(false, "Disconnected");
+      document.getElementById('btnSerial').textContent = "🔌 Connect via USB (Web Serial)";
+      document.getElementById('btnSerial').onclick = connectWebSerial;
+    }
+
+    // -------------------------------------------------------------------------
+    // Wi-Fi Bridge Connection (EventSource SSE / WebSocket)
+    // -------------------------------------------------------------------------
+    let evtSource = null;
+    function connectWebSocket() {
+      if (evtSource) {
+        evtSource.close();
+        evtSource = null;
+        setConnected(false, "Disconnected");
+        document.getElementById('btnBridge').textContent = "🌐 Connect to Wi-Fi Bridge";
+        return;
+      }
+
+      const host = window.location.hostname || "localhost";
+      const sseUrl = window.location.protocol === 'http:' ? '/events' : `http://${host}:8080/events`;
+
+      appendLog(`Connecting to Wi-Fi Bridge at ${sseUrl}...`);
+      try {
+        evtSource = new EventSource(sseUrl);
+
+        evtSource.onopen = () => {
+          setConnected(true, `Wi-Fi Bridge Connected (${host})`);
+          appendLog(`Connected to PawState Wi-Fi Bridge!`);
+          document.getElementById('btnBridge').textContent = "🌐 Disconnect Bridge";
+        };
+
+        evtSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'state') {
+              updateStateUI(data.state, data.confidence, data.probs);
+              appendLog(`State: ${data.state} (${data.confidence}%)`);
+            } else if (data.type === 'alert') {
+              triggerAnxietyAlert();
+              appendLog(`⚠️ *** ANXIETY SPIKE ALERT ***`, true);
+            }
+          } catch (e) {
+            parseSerialLine(event.data);
+          }
+        };
+
+        evtSource.onerror = (err) => {
+          console.warn("SSE connection error:", err);
+          setConnected(false, "Bridge Offline / Reconnecting");
+        };
+      } catch (err) {
+        console.error("EventSource failed:", err);
+        alert(`Could not connect to Wi-Fi bridge at ${sseUrl}.\nMake sure 'python dashboard_bridge.py' is running!`);
+      }
+    }
+
+    // Auto-connect if opened through dashboard_bridge.py
+    if (window.location.protocol === 'http:' && (window.location.port === '8080' || window.location.pathname.includes('events'))) {
+      setTimeout(connectWebSocket, 500);
+    }
+
+    // -------------------------------------------------------------------------
+    // Interactive Simulator Demo (Allows full testing without hardware)
+    // -------------------------------------------------------------------------
+    let simInterval = null;
+    function toggleSimulation() {
+      const btn = document.getElementById('btnSim');
+      if (simInterval) {
+        clearInterval(simInterval);
+        simInterval = null;
+        btn.textContent = "🧪 Run Simulator Demo";
+        setConnected(false, "Simulator Stopped");
+      } else {
+        btn.textContent = "⏹️ Stop Simulator";
+        setConnected(true, "Simulated Dog Mode");
+        const simStates = [
+          { name: "Resting", conf: 98, probs: [251, 0, 0, 0, 0], alert: false },
+          { name: "Walking", conf: 85, probs: [20, 218, 5, 10, 2], alert: false },
+          { name: "Playing", conf: 92, probs: [0, 10, 235, 10, 0], alert: false },
+          { name: "Anxious Pacing", conf: 88, probs: [5, 15, 10, 225, 0], alert: true },
+          { name: "Alert Freeze", conf: 84, probs: [10, 5, 0, 25, 215], alert: true },
+          { name: "Unknown", conf: 45, probs: [50, 60, 45, 55, 45], alert: false }
+        ];
+        let idx = 0;
+        simInterval = setInterval(() => {
+          const s = simStates[idx % simStates.length];
+          updateStateUI(s.name, s.conf, s.probs);
+          appendLog(`[Sim] State: ${s.name} (${s.conf}%)`, s.alert);
+          if (s.alert) triggerAnxietyAlert();
+          idx++;
+        }, 3000);
+      }
+    }
+
+    // Initialize with clean Unknown state
+    updateLEDDisplay("Unknown");
+  </script>
+</body>
+</html>

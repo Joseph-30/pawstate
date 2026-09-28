@@ -43,6 +43,10 @@
 #include "sysdepend/rza2m/i2c_rza2m.h"
 #endif	/* CPU_RZA2M */
 
+#ifdef CPU_NRF5
+#include "sysdepend/nrf5/i2c_nrf5.h"
+#endif	/* CPU_NRF5 */
+
 /*---------------------------------------------------------------------*/
 /* Device driver Control block
  */

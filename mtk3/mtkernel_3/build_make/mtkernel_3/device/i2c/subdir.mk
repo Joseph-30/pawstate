@@ -29,3 +29,7 @@ endif
 #ifeq ($(TARGET), _IOTE_RZA2M_)
 #-include mtkernel_3/device/i2c/sysdepend/rza2m/subdir.mk
 #endif
+
+ifeq ($(TARGET), _MICROBIT_)
+-include mtkernel_3/device/i2c/sysdepend/nrf5/subdir.mk
+endif

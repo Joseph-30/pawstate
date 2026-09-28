@@ -1,0 +1,22 @@
+# Python and IDEs
+.vscode/
+__pycache__/
+*.pyc
+
+# Data
+ML_canine_data/
+
+# Build artifacts
+*.o
+*.d
+*.elf
+*.map
+*.hex
+!/mtkernel_3.hex
+*.bin
+
+# Temporary scratch scripts used during development
+check_model_behavior.py
+debug_model.py
+test_firmware_simulation.py
+
