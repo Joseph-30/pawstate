@@ -15,12 +15,12 @@ This procedure allows contest evaluators and judges to test the full real-time c
 - 1x BBC micro:bit v2 (with built-in speaker and LSM303AGR IMU).
 - 1x Standard USB micro cable.
 - 1x PC running Windows, macOS, or Linux with Google Chrome or Microsoft Edge.
-- Pre-compiled firmware binary: [`mtkernel_3.hex`](file:///c:/pawstate/mtkernel_3.hex).
+- Pre-compiled firmware binary: [`mtkernel_3.hex`](../mtkernel_3.hex).
 
 ### 1.2 Flashing Procedure
 1. Connect the micro:bit v2 to your PC using the USB cable.
 2. The board will enumerate as a USB mass storage drive named **`MICROBIT`**.
-3. Drag and drop the [`mtkernel_3.hex`](file:///c:/pawstate/mtkernel_3.hex) file directly onto the **`MICROBIT`** drive.
+3. Drag and drop the [`mtkernel_3.hex`](../mtkernel_3.hex) file directly onto the **`MICROBIT`** drive.
 4. The yellow indicator LED on the rear of the board will flash rapidly for ~5–10 seconds while the internal DAPLink interface programs the nRF52833 flash.
 5. Once flashing completes, the board reboots immediately into **μT-Kernel 3.0**.
 
@@ -56,7 +56,7 @@ Follow these physical motions to trigger and observe each behavioral classificat
 ## 3. Real-Time Telemetry & Live Dashboard Evaluation
 
 ### 3.1 Zero-Install Web Serial Dashboard (`pawstate_dashboard.html`)
-1. Open [`pawstate_dashboard.html`](file:///c:/pawstate/pawstate_dashboard.html) in Google Chrome or Microsoft Edge.
+1. Open [`pawstate_dashboard.html`](../pawstate_dashboard.html) in Google Chrome or Microsoft Edge.
 2. Click the **"🔌 Connect via USB (Web Serial)"** button.
 3. Select `BBC micro:bit CMSIS-DAP` from the browser pop-up prompt and click **Connect**.
 4. The dashboard immediately reflects:
@@ -167,7 +167,7 @@ If modifying neural network architecture or training distributions:
    python train_pawstate.py
    ```
 2. The script trains an INT8-quantized 3-layer neural network across the canine behavioral continuum.
-3. Automatically regenerates [`mtk3/mtkernel_3/sample-pawstate/ml/model_data.h`](file:///c:/pawstate/mtk3/mtkernel_3/sample-pawstate/ml/model_data.h) and [`sample-pawstate/ml/model_data.h`](file:///c:/pawstate/sample-pawstate/ml/model_data.h).
+3. Automatically regenerates [`mtk3/mtkernel_3/sample-pawstate/ml/model_data.h`](../mtk3/mtkernel_3/sample-pawstate/ml/model_data.h) and [`sample-pawstate/ml/model_data.h`](../sample-pawstate/ml/model_data.h).
 4. Rebuild the firmware (`make all`) to apply the new weights.
 
 ---
@@ -180,7 +180,7 @@ If modifying neural network architecture or training distributions:
 | **Real-Time Determinism** | 50 Hz IMU sampling driven by hardware timer cyclic handler. Never drops samples during ML inference or display scanning. | **Jitter < 20 μs** |
 | **Edge Intelligence (TinyML)** | Pure C INT8 feedforward engine without TF-Lite Micro bloat. Flash usage: < 500 bytes code, 290 bytes weights. | **Inference Time < 2.5 ms** |
 | **Multi-Modal Alerting** | 5×5 LED matrix display + 2 kHz hardware PWM acoustic chime + BLE GATT alerts. | **Immediate (<30 ms latency)** |
-| **Code Cleanliness & Documentation** | Strict directory structure, 100% synchronized trees, comprehensive manuals. | **Complete & Reproducible** |
+| **Code Cleanliness & Documentation** | Strict directory structure, documented canonical tree, and comprehensive manuals. | **Review required before release** |
 
 ---
 *PawState — Engineered for Canine Welfare on μT-Kernel 3.0 & BBC micro:bit v2*

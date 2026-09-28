@@ -35,7 +35,58 @@ As required for evaluation and execution, comprehensive manuals and architectura
 
 ---
 
-## 3. Fast-Track Evaluation (Under 2 Minutes)
+## 3. Reproducible Setup
+
+The repository has two valid entry points:
+
+- `mtk3/mtkernel_3/sample-pawstate/` is the **canonical firmware source** compiled by the checked-in Makefile.
+- `sample-pawstate/` is a synchronized source mirror retained for standalone inspection and Python verification. Keep both trees identical when changing firmware source; the training script synchronizes only `model_data.h`.
+
+### Python environment
+
+Use Python 3.9 or newer. From the repository root:
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+### Training data
+Download the official [Inertial sensor dataset for Dog Posture Recognition](https://data.mendeley.com/datasets/mpph6bmn7g/1) from Mendeley Data. It is version 1, DOI `10.17632/mpph6bmn7g.1`, and licensed CC BY 4.0. The official ZIP download is [available here](https://data.mendeley.com/public-api/zip/mpph6bmn7g/download/1). You can download and extract it automatically with:
+
+```powershell
+.\download_dataset.ps1
+```
+
+Training expects `df_raw.csv` and `df_dogs.csv` under `ML_canine_data/`. The dataset directory is intentionally excluded from Git because `df_raw.csv` is approximately 546 MB. The tracked [dataset guide](ML_canine_data/README.md) records the source, licence, expected files, and SHA-256 checksums.
+
+After placing the data files, train and regenerate both model headers with:
+
+```powershell
+python train_pawstate.py
+python verify_model_pipeline.py
+python test_sensitivity.py
+```
+
+### Firmware build
+
+Install GNU Make and the Arm GNU Toolchain (`arm-none-eabi-gcc`, `arm-none-eabi-objcopy`, and `arm-none-eabi-size`). Then build the canonical tree:
+
+```powershell
+Set-Location mtk3/mtkernel_3/build_make
+make clean
+make all
+arm-none-eabi-objcopy -O ihex mtkernel_3.elf mtkernel_3.hex
+arm-none-eabi-size mtkernel_3.elf
+```
+
+The generated build output is in `mtk3/mtkernel_3/build_make/`. The root `mtkernel_3.hex` is the tracked submission artifact and must be refreshed from that build before submitting a new firmware version. The build uses the nested application tree, not the root mirror.
+
+---
+
+## 4. Fast-Track Evaluation (Under 2 Minutes)
 
 Judges can evaluate PawState immediately without installing any embedded toolchains:
 
@@ -58,7 +109,7 @@ Test the physical motions with the micro:bit in your hand:
 
 ---
 
-## 4. System Architecture & μT-Kernel 3.0 Tasks
+## 5. System Architecture & μT-Kernel 3.0 Tasks
 
 ```
 +---------------------------------------------------------------------------------------+
@@ -111,7 +162,7 @@ Test the physical motions with the micro:bit in your hand:
 
 ---
 
-## 5. Canine Behavioral States & 5×5 LED Matrix Displays
+## 6. Canine Behavioral States & 5×5 LED Matrix Displays
 
 | Class ID | Behavior | Biomechanical Profile | 5×5 LED Matrix Icon | Collar Alarm | Mobile Alert |
 | :---: | :--- | :--- | :---: | :---: | :---: |
@@ -134,7 +185,7 @@ Test the physical motions with the micro:bit in your hand:
 
 ---
 
-## 6. Verification & Sensitivity Suite
+## 7. Verification & Sensitivity Suite
 
 All components are accompanied by automated verification scripts to ensure 1:1 mathematical parity with the embedded C firmware:
 
@@ -165,41 +216,26 @@ Validates the entire pipeline from raw IMU samples through fixed-point feature e
 
 ---
 
-## 7. Building from Source
+## 8. Building from Source
 
-### Prerequisites
-- `arm-none-eabi-gcc` (Version 10.3 or higher with Cortex-M4 hard-float support)
-- GNU Make (`make`)
-- Python 3.9+ (with `numpy`, `tensorflow`, `pyserial`)
-
-### Compilation Commands
-```bash
-# 1. Navigate to the μT-Kernel 3.0 build directory
-cd mtk3/mtkernel_3/build_make
-
-# 2. Compile the kernel and PawState application
-make all
-
-# 3. Generate Intel HEX binary for flashing
-arm-none-eabi-objcopy -O ihex mtkernel_3.elf mtkernel_3.hex
-
-# 4. Check memory consumption
-arm-none-eabi-size mtkernel_3.elf
-```
+See [Reproducible Setup](#3-reproducible-setup) for the complete build commands. The generated HEX file in the build directory is not tracked by Git; copy or otherwise promote it to the root `mtkernel_3.hex` only after verification.
 
 ---
 
-## 8. Repository Structure
+## 9. Repository Structure
 
 ```
 c:\pawstate\
 ├── README.md                        # Master contest documentation (this file)
-├── mtkernel_3.hex                   # Pre-compiled flashable binary for micro:bit v2
+├── mtkernel_3.hex                   # Tracked pre-compiled flashable binary for micro:bit v2
 ├── pawstate_dashboard.html          # Zero-install Web Serial & SSE live monitor
 ├── dashboard_bridge.py              # USB-to-HTTP/SSE Wi-Fi bridge for smartphone monitoring
+├── requirements.txt                 # Python training and verification dependencies
+├── download_dataset.ps1             # Official Mendeley dataset downloader and checksum verifier
 ├── test_sensitivity.py              # Physical & hand demonstration benchmark script
 ├── verify_model_pipeline.py         # Independent pipeline verification agent
 ├── train_pawstate.py                # Continuum training & INT8 C header exporter
+├── ML_canine_data/README.md          # Dataset provenance, licence, files, and checksums
 ├── docs/                            # Official Contest Submission Documentation
 │   ├── OPERATION_MANUAL.md          # Comprehensive user & operating manual
 │   ├── PROCEDURE_MANUAL.md          # Step-by-step evaluation procedure for judges
@@ -214,12 +250,16 @@ c:\pawstate\
 │       ├── ml/                      # INT8 Inference Engine & model_data.h
 │       ├── util/                    # Lock-free circular buffer & Q16.16 math utils
 │       └── include/                 # Configuration headers & type definitions
-└── sample-pawstate/                 # Synchronized mirror directory
+└── sample-pawstate/                 # Synchronized source mirror; not compiled by make
 ```
+
+### Duplicate-file audit
+
+The two `sample-pawstate` trees currently contain 35 identical files. A whole-repository SHA-256 audit also finds 36 exact duplicate groups / 72 duplicate files, including the two firmware HEX copies and duplicated design documents. The duplication is intentional for the current build layout, but it is a submission risk: source edits can drift between trees. Treat `mtk3/mtkernel_3/sample-pawstate/` as canonical and compare the mirror before release.
 
 ---
 
-## 9. TRON Contest Compliance Summary
+## 10. TRON Contest Compliance Summary
 
 1. **Native μT-Kernel 3.0 Conformance:** Fully leverages native μT-Kernel tasks, semaphores, event flags, message buffers, and cyclic handlers without external RTOS abstractions.
 2. **Deterministic Hard Real-Time Execution:** Priority-preemptive scheduling guarantees 50 Hz IMU sensor integrity while running machine learning and communication tasks asynchronously.
@@ -228,3 +268,6 @@ c:\pawstate\
 
 ---
 *PawState — TRON Programming Contest 2026 Submission*
+
+
+[def]: https://data.mendeley.com/datasets/mpph6bmn7g/1

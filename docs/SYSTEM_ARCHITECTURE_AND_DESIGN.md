@@ -60,7 +60,7 @@ PawState demonstrates how a hard real-time operating system (**μT-Kernel 3.0**)
 | **`tsk_imu_sampler`** | `imu_sampler_task()` | `1` | Woken by cyclic handler every 20 ms | 512 B | Acquires 6-axis data (Accel X,Y,Z + Mag X,Y,Z) from LSM303AGR via 400kHz I2C (`sem_i2c`). Pushes samples into a 256-entry lock-free circular buffer. Signals `EVT_NEW_SAMPLES` every 62 samples (1.24s). |
 | **`tsk_feature_extractor`** | `feature_extractor_task()` | `5` | Event-driven (`EVT_NEW_SAMPLES`) | 1024 B | Peeks 125 samples (2.5s window) from buffer, computes 6-D fixed-point (Q16.16) features, consumes 62 samples, updates `current_features` under `sem_feature_buf`, and signals `EVT_FEATURES_READY`. |
 | **`tsk_classifier`** | `tinyml_classifier_task()` | `10` | Event-driven (`EVT_FEATURES_READY`) | 1536 B | Copies features, runs INT8 neural network inference, applies temporal debouncing, updates 5×5 LED matrix. If an anxiety spike is detected (Classes 3 & 4), immediately sounds the 2kHz buzzer and signals `EVT_ANXIETY_SPIKE`. |
-| **`tsk_ble_logger`** | `ble_logger_task()` | `15` | Event-driven (`mbf_ble_events` / `EVT_ANXIETY_SPIKE`) | 1024 B | Dequeues state events and broadcasts BLE GATT notifications. In offline mode, caches events in an onboard 32-entry circular buffer. |
+| **`tsk_ble_logger`** | `ble_logger_task()` | `15` | Event-driven (`mbf_ble_events` / `EVT_ANXIETY_SPIKE`) | 1024 B | Dequeues state events and broadcasts BLE GATT notifications. In offline mode, caches up to 2880 events in a circular buffer, approximately 24 hours at two transitions per minute. |
 
 ### 2.2 Cyclic Handlers & Interrupt Service Contexts
 

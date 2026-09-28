@@ -125,7 +125,7 @@ sample-pawstate/
 
 ### Anxiety Spike Alert Path
 
-When the classifier detects a transition to `ANXIOUS_PACING` or `ALERT_FREEZE` with confidence ≥70%:
+When the classifier detects a transition to `ANXIOUS_PACING` or `ALERT_FREEZE` with confidence ≥55%, it sends the immediate anxiety alert path. Ordinary non-anxiety states at 50-69% confidence remain subject to temporal debouncing; confidence ≥70% switches the displayed state immediately:
 
 1. **EVT_ANXIETY_SPIKE** event flag is set → wakes BLE Logger
 2. **Message buffer** receives high-priority event with `is_anxiety=1`
@@ -256,23 +256,24 @@ RAM   (rwx) : ORIGIN = 0x20002000, LENGTH = 120K
 
 ### Build & Flash
 
+For this checkout, use the root [`README.md`](../README.md). The checked-in Makefile compiles the canonical copy from `mtk3/mtkernel_3/build_make`; this root tree is an inspection mirror and does not create `build/pawstate.hex`.
+
 ```bash
 # Build the firmware
 make all
 
-# Flash via OpenOCD (DAPLink interface on micro:bit v2)
-openocd -f interface/cmsis-dap.cfg -f target/nrf52.cfg \
-    -c "program build/pawstate.hex verify reset exit"
+# Generate the flashable file from the ELF in the build directory
+arm-none-eabi-objcopy -O ihex mtkernel_3.elf mtkernel_3.hex
 
-# Or copy .hex file to the MICROBIT USB drive
-cp build/pawstate.hex /media/MICROBIT/
+# Or copy the generated .hex file to the MICROBIT USB drive
+cp mtkernel_3.hex /media/MICROBIT/
 ```
 
 ---
 
 ## Replacing Placeholder Model Weights with Trained Weights
 
-The current `ml/model_data.h` contains realistic placeholder weights. To replace with your trained model:
+The checked-in `ml/model_data.h` is generated model data. To replace it with a retrained model, run `python train_pawstate.py` from the repository root; the script writes both the canonical build copy and the inspection mirror.
 
 ### Step 1: Train the Model (Python)
 
@@ -379,7 +380,7 @@ All tuneable parameters are in `include/pawstate_config.h`:
 | `FEATURE_WINDOW_SIZE` | 125 | Sliding window (2.5s at 50 Hz) |
 | `FEATURE_VECTOR_DIM` | 6 | Number of extracted features |
 | `NUM_BEHAVIOUR_CLASSES` | 5 | Classification output classes |
-| `ANXIETY_SPIKE_CONFIDENCE` | 70% | Threshold for anxiety alerts |
+| `ANXIETY_SPIKE_CONFIDENCE` | 55% | Threshold for anxiety alerts; ordinary state changes use a 70% immediate-switch threshold |
 | `CIRC_BUFFER_CAPACITY` | 256 | IMU sample ring buffer size |
 | `TASK_PRI_IMU_SAMPLER` | 1 | Highest priority |
 | `TASK_PRI_BLE_LOGGER` | 15 | Lowest priority |

@@ -133,7 +133,7 @@ For homes, clinics, or lab demonstrations where the micro:bit is connected via U
 5. The mobile screen mirrors the collar's 5×5 LED matrix in real time, displays live confidence graphs, and plays audio alert chimes upon anxiety events!
 
 ### 6.3 Zero-Install Web Serial Dashboard (`pawstate_dashboard.html`)
-1. Open [`pawstate_dashboard.html`](file:///c:/pawstate/pawstate_dashboard.html) directly in Google Chrome or Microsoft Edge.
+1. Open [`pawstate_dashboard.html`](../pawstate_dashboard.html) directly in Google Chrome or Microsoft Edge.
 2. Click **"🔌 Connect via USB (Web Serial)"** and choose the `BBC micro:bit CMSIS-DAP` COM port.
 3. No Python or web server required — telemetry is parsed directly in browser JavaScript.
 
@@ -143,7 +143,7 @@ For homes, clinics, or lab demonstrations where the micro:bit is connected via U
 
 When the dog is outside Bluetooth range (e.g., roaming in the yard):
 1. **Automatic Detection:** The BLE logger task (`tsk_ble_logger`) monitors connection status.
-2. **Ring Buffer Storage:** Behavioral state changes and timestamped anxiety events are automatically saved into an onboard 32-entry non-volatile circular ring buffer.
+2. **Ring Buffer Storage:** Behavioral state changes and timestamped anxiety events are automatically saved into an onboard 2880-entry circular ring buffer, sized for approximately 24 hours at two state transitions per minute.
 3. **Reconnection Burst Sync:** As soon as the dog returns within Bluetooth range, PawState automatically flushes the stored event log to the paired smartphone, ensuring no anxiety spikes are lost.
 
 ---
@@ -162,7 +162,7 @@ When the dog is outside Bluetooth range (e.g., roaming in the yard):
 
 | Symptom | Probable Cause | Corrective Action |
 | :--- | :--- | :--- |
-| **LED matrix remains blank on boot** | Power not connected or corrupt flash. | Check battery voltage (>2.7V). Re-drag [`mtkernel_3.hex`](file:///c:/pawstate/mtkernel_3.hex) onto `MICROBIT` drive. |
+| **LED matrix remains blank on boot** | Power not connected or corrupt flash. | Check battery voltage (>2.7V). Re-drag [`mtkernel_3.hex`](../mtkernel_3.hex) onto `MICROBIT` drive. |
 | **Device displays `?` (Unknown) frequently** | Rapid, erratic hand manipulation or loose collar. | Ensure collar is comfortably snug. Allow 1-2 seconds of steady motion for the 1.24s sliding window to capture cadence. |
 | **No sound during Anxiety Spikes** | Volume disabled or board rev mismatch. | Ensure micro:bit v2 is used (v1 does not have built-in speaker). Check that `P0.00` PWM is enabled. |
 | **Web Serial dashboard cannot connect** | COM port occupied by another terminal. | Close PuTTY, Tera Term, or Arduino Serial Monitor before clicking "Connect" in the dashboard. |
