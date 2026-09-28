@@ -1,5 +1,7 @@
 # PawState: Real-Time Canine Welfare & Anxiety Monitor
+
 ## SYSTEM ARCHITECTURE & TECHNICAL DESIGN SPECIFICATION
+
 **Document Version:** 1.0.0  
 **Target Platform:** BBC micro:bit v2 (Nordic nRF52833 ARM Cortex-M4F)  
 **Operating System:** μT-Kernel 3.0 Real-Time Operating System  
@@ -11,7 +13,8 @@
 
 PawState demonstrates how a hard real-time operating system (**μT-Kernel 3.0**) combined with deterministic **TinyML edge intelligence** can transform an accessible, low-cost microcontroller (BBC micro:bit v2) into a mission-critical veterinary wearable.
 
-### Core Engineering Principles:
+### Core Engineering Principles
+
 1. **Zero Dynamic Memory Allocation:** Zero calls to `malloc()` or dynamic heaps. All task stacks, circular buffers, kernel control blocks, and neural network weights are statically allocated at link time, preventing heap fragmentation and memory leaks.
 2. **Strict Priority Preemption:** High-frequency 50 Hz IMU sensor acquisition runs at Priority 1, completely immune to preemption by machine learning inference or communication tasks.
 3. **Pure C Embedded TinyML:** Rather than incorporating heavyweight C++ runtimes like TensorFlow Lite for Microcontrollers (~80 KB flash overhead), PawState uses a custom, highly optimized pure C INT8 feedforward engine (~500 bytes code, 290 bytes weights) that executes deterministically in < 2.5 ms.
@@ -130,6 +133,7 @@ Sample Stream (50 Hz = 20ms/sample):
 ## 5. INT8 Quantized Neural Network & Embedded Inference Engine
 
 ### 5.1 Model Topology
+
 - **Input Dimension:** 6 features $\rightarrow$ Quantized to `int8_t` $[-128, 127]$.
 - **Hidden Layer 1:** 16 neurons with ReLU activation, INT8 weights, INT32 accumulator, shifted requantization (`acc >> 8`).
 - **Hidden Layer 2:** 8 neurons with ReLU activation, INT8 weights, INT32 accumulator (`acc >> 8`).
@@ -141,6 +145,7 @@ Sample Stream (50 Hz = 20ms/sample):
 ### 5.2 Temporal Persistence Filter & Debouncer
 
 To eliminate question-mark flickering and transient noise without compromising emergency alerting:
+
 - **Instant Anxiety Escalation:** High-priority anxiety spikes (Classes 3 & 4) trigger instantly with zero delay (<30ms).
 - **Instant Confident Switching:** Any classification with $\ge 70\%$ confidence transitions immediately.
 - **Moderate Confirmation (50–69%):** Requires 2 consecutive matching sliding windows.
@@ -151,16 +156,19 @@ To eliminate question-mark flickering and transient noise without compromising e
 ## 6. Hardware Peripheral Subsystems
 
 ### 6.1 LSM303AGR 6-Axis IMU (I2C Driver)
+
 - **Interface:** Hardware TWIM0 peripheral (`P0.08` SCL, `P0.16` SDA) running at 400 kHz Fast-Mode.
 - **Accelerometer:** 50 Hz Normal Mode, $\pm 2g$ full-scale, 10-bit resolution ($3.9 \text{ mg/LSB}$).
 - **Magnetometer:** 50 Hz High-Resolution Mode, $\pm 50 \text{ Gauss}$.
 
 ### 6.2 5×5 LED Matrix (Display Driver)
+
 - **Scanning Mode:** 120 Hz row-multiplexed active scanning driven by `cyc_led_refresh`.
 - **Anode Rows (Active High):** `P0.21`, `P0.22`, `P0.15`, `P0.24`, `P0.19`.
 - **Cathode Columns (Active Low):** `P0.28`, `P0.11`, `P0.31`, `P1.05`, `P0.30`.
 
 ### 6.3 Acoustic Buzzer (Audio Driver)
+
 - **Pin:** `P0.00` connected to built-in magnetic speaker.
 - **Controller:** Nordic PWM0 peripheral with hardware shortcut `PWM0_SHORTS = (1UL << 3)` (`LOOPSDONE_SEQSTART0`) and `PWM0_LOOP = 0xFFFF`.
 - **Frequency:** 2,000 Hz tone generated entirely in hardware without CPU cycle consumption.
@@ -170,12 +178,14 @@ To eliminate question-mark flickering and transient noise without compromising e
 ## 7. Memory Footprint & Resource Breakdown
 
 ### 7.1 Flash Memory Allocation (512 KB Total)
+
 - **μT-Kernel 3.0 Core & HAL:** ~32 KB
 - **PawState Application & Drivers:** ~14 KB
 - **INT8 Neural Network Weights & Inference Engine:** ~1.8 KB
 - **Remaining Flash Headroom:** **> 464 KB (90.6% Free)**
 
 ### 7.2 SRAM Allocation (128 KB Total)
+
 - **Kernel Data Structures & System Stacks:** ~4.2 KB
 - **Application Task Stacks (4 Tasks):** ~4.0 KB
 - **IMU Circular Ring Buffer (256 samples):** ~3.1 KB

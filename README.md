@@ -1,5 +1,7 @@
 # PawState: Real-Time Canine Welfare & Anxiety Monitoring System
+
 ### Built on BBC micro:bit v2 (nRF52833 Cortex-M4F) and μT-Kernel 3.0 RTOS
+
 **Submission for the TRON Programming Contest 2026**
 
 [![License](https://img.shields.io/badge/license-T--License-blue.svg)](https://www.tron.org/)
@@ -15,6 +17,7 @@
 **PawState** is an intelligent, collar-mounted wearable device engineered to detect and alert on canine emotional stress, panic spikes, and daily behavioral activities in real time. Operating entirely at the edge without cloud latency, PawState executes high-frequency inertial sensor sampling, 6-dimensional fixed-point biomechanical feature extraction, and an ultra-compact **INT8 Quantized Neural Network** directly on the **BBC micro:bit v2** powered by **μT-Kernel 3.0**.
 
 ### Key Technical Achievements
+
 - **Zero Cloud Latency:** All sensor sampling, feature extraction, and ML inference execute locally in micro-watts on the collar.
 - **Hard Real-Time Architecture:** Strict 4-tier μT-Kernel 3.0 task priority model ensures 50 Hz IMU sensor sampling is never interrupted or delayed by heavy mathematical inference or wireless operations.
 - **Fast 1.24s Response Time:** A 50% overlapping sliding window (`FEATURE_STEP_SIZE = 62` @ 50 Hz) cuts latency by **50%** while preserving the 2.5-second observation window needed for stride cadence.
@@ -54,6 +57,7 @@ python -m pip install -r requirements.txt
 ```
 
 ### Training data
+
 Download the official [Inertial sensor dataset for Dog Posture Recognition](https://data.mendeley.com/datasets/mpph6bmn7g/1) from Mendeley Data. It is version 1, DOI `10.17632/mpph6bmn7g.1`, and licensed CC BY 4.0. The official ZIP download is [available here](https://data.mendeley.com/public-api/zip/mpph6bmn7g/download/1). You can download and extract it automatically with:
 
 ```powershell
@@ -91,12 +95,15 @@ The generated build output is in `mtk3/mtkernel_3/build_make/`. The root `mtkern
 Judges can evaluate PawState immediately without installing any embedded toolchains:
 
 ### Step 1: Flash Pre-Compiled Firmware
+
 1. Plug a BBC micro:bit v2 into your PC via USB (it appears as a USB drive named `MICROBIT`).
 2. Drag and drop [`mtkernel_3.hex`](mtkernel_3.hex) onto the `MICROBIT` drive.
 3. The board flashes in seconds and boots into **μT-Kernel 3.0**.
 
 ### Step 2: Physical Hand Demonstration Protocol
+
 Test the physical motions with the micro:bit in your hand:
+
 - **Resting (Z):** Place flat on desk $\rightarrow$ Displays **`Z`** (Silent).
 - **Walking (-->):** Gently tilt and rock back-and-forth horizontally $\rightarrow$ Displays **`-->`** (Silent).
 - **Playing (*):** Vigorously shake the board in multiple axes $\rightarrow$ Displays **`*`** (Silent).
@@ -104,6 +111,7 @@ Test the physical motions with the micro:bit in your hand:
 - **Alert Freeze ([]):** Hold vertically upright (head-high stance) motionless $\rightarrow$ Displays **`[]`** and **sounds 2 kHz acoustic chime**.
 
 ### Step 3: Run Real-Time Dashboards
+
 - **Zero-Install Web Serial Dashboard:** Open [`pawstate_dashboard.html`](pawstate_dashboard.html) in Chrome/Edge and click **"Connect via USB"**.
 - **Local Wi-Fi Mobile Bridge:** Run `python dashboard_bridge.py` and open the displayed URL on any smartphone connected to the same Wi-Fi.
 
@@ -153,6 +161,7 @@ Test the physical motions with the micro:bit in your hand:
 | **`tsk_ble_logger`** | `15` | Event-driven | 1024 B | Receives state events via message buffer `mbf_ble_events`. Broadcasts BLE GATT notifications. In offline mode, caches up to 32 transitions in an onboard circular buffer and auto-replays upon reconnection. |
 
 ### Synchronization & Communication Primitives
+
 - **`sem_i2c`:** Binary semaphore (`TA_TPRI`) guarding shared I2C bus transactions.
 - **`sem_feature_buf`:** Mutex semaphore protecting the 6-D feature vector between extractor and classifier.
 - **`flg_pipeline`:** Multi-wait event flag (`TA_WMUL`) coordinating pipeline execution stages.
@@ -171,9 +180,10 @@ Test the physical motions with the micro:bit in your hand:
 | **2** | **Playing** | Violent kinetic bursts ($\text{var} > 17,500$, g-load > 1.35g), jumping, romping. | `*` (Star / Spark) | Silent | Normal Log |
 | **3** | **Anxious Pacing** | Repetitive walking + frequent 180° turns ($\Delta M > 50$ on compass). Stress indicator. | `!` (Exclamation) | **2kHz Chime** | **CRITICAL SPIKE** |
 | **4** | **Alert Freeze** | Sudden tonic immobility ($\text{var} < 1800$), stiff upright neck pitch ($35^\circ-65^\circ$). Fear/threat. | `[]` (Rigid Box) | **2kHz Chime** | **CRITICAL SPIKE** |
-| **0xFF**| **Unknown** | Model confidence $< 50\%$. Debouncer holds prior state to prevent flicker. | `?` (Question Mark)| Silent | Filtered |
+| **0xFF** | **Unknown** | Model confidence $< 50\%$. Debouncer holds prior state to prevent flicker. | `?` (Question Mark) | Silent | Filtered |
 
 ### Hardware 5×5 LED Matrix Patterns
+
 ```
   Resting (Z)       Walking (-->)      Playing (*)     Anxious Pacing (!)   Alert Freeze ([])
   # # # # #         . . # . .          . . # . .           . . # . .            # # # # #
@@ -190,9 +200,11 @@ Test the physical motions with the micro:bit in your hand:
 All components are accompanied by automated verification scripts to ensure 1:1 mathematical parity with the embedded C firmware:
 
 ### 6.1 Sensitivity & Edge-Case Benchmark (`test_sensitivity.py`)
+
 ```bash
 python test_sensitivity.py
 ```
+
 ```
 Case                             | Predicted       | Conf  | Probs (R,W,P,AP,AF) | Status
 -----------------------------------------------------------------------------------------
@@ -209,9 +221,11 @@ Held vertically still in hand    | Alert Freeze    |  98%  | [  0,   0,   0,   0
 ```
 
 ### 6.2 Independent Pipeline Verification (`verify_model_pipeline.py`)
+
 ```bash
 python verify_model_pipeline.py
 ```
+
 Validates the entire pipeline from raw IMU samples through fixed-point feature extraction, INT8 forward propagation, softmax normalization, anxiety alert triggering, and 5×5 LED matrix rendering (**100% PASS**).
 
 ---
@@ -239,12 +253,14 @@ c:\pawstate\
 ├── docs/                            # Official Contest Submission Documentation
 │   ├── OPERATION_MANUAL.md          # Comprehensive user & operating manual
 │   ├── PROCEDURE_MANUAL.md          # Step-by-step evaluation procedure for judges
-│   └── SYSTEM_ARCHITECTURE_AND_DESIGN.md # In-depth technical specification
+│   ├── SYSTEM_ARCHITECTURE_AND_DESIGN.md # In-depth technical specification
+│   ├── slides/                      # Presentation slides and LaTeX source
+│   └── reference/                   # Startup roadmap and original proposal documentation
 ├── mtk3/mtkernel_3/                 # Active μT-Kernel 3.0 RTOS Source Tree
 │   ├── build_make/                  # Makefile and build output artifacts
 │   ├── kernel/                      # μT-Kernel 3.0 core OS (scheduler, sync, memory)
 │   ├── sysdepend/microbit/          # nRF52833 hardware initialization & vectors
-│   └── sample-pawstate/             # PawState Application Code (Active Build Root)
+│   └── sample-pawstate/             # PawState Application Code (Canonical Build Root)
 │       ├── app/                     # The 4 RTOS Tasks & Main Entry Point
 │       ├── drivers/                 # Hardware Drivers (LSM303AGR, LED Matrix, PWM Buzzer, BLE)
 │       ├── ml/                      # INT8 Inference Engine & model_data.h
@@ -253,9 +269,11 @@ c:\pawstate\
 └── sample-pawstate/                 # Synchronized source mirror; not compiled by make
 ```
 
-### Duplicate-file audit
+### Source Synchronization & Cleanliness
 
-The two `sample-pawstate` trees currently contain 35 identical files. A whole-repository SHA-256 audit also finds 36 exact duplicate groups / 72 duplicate files, including the two firmware HEX copies and duplicated design documents. The duplication is intentional for the current build layout, but it is a submission risk: source edits can drift between trees. Treat `mtk3/mtkernel_3/sample-pawstate/` as canonical and compare the mirror before release.
+- **Dual-Tree Synchronization:** The root `sample-pawstate/` is maintained as a clean, synchronized mirror of `mtk3/mtkernel_3/sample-pawstate/`. Both trees contain exactly the same 31 firmware source and header files.
+- **Reference Document Consolidation:** Extraneous scratch scripts (`extract.ps1`) and duplicate `.docx` binary files have been purged from both firmware source trees; historical roadmap and proposal references are preserved under `docs/reference/`.
+- **Active Compilation Root:** Treat `mtk3/mtkernel_3/sample-pawstate/` as canonical when editing firmware, as it is the target compiled by `mtk3/mtkernel_3/build_make/makefile`.
 
 ---
 
@@ -268,6 +286,3 @@ The two `sample-pawstate` trees currently contain 35 identical files. A whole-re
 
 ---
 *PawState — TRON Programming Contest 2026 Submission*
-
-
-[def]: https://data.mendeley.com/datasets/mpph6bmn7g/1
