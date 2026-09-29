@@ -559,21 +559,31 @@
     // -------------------------------------------------------------------------
     let serialPort = null;
     let serialReader = null;
+    let serialInputDone = null;
+    let serialDisconnecting = false;
     async function connectWebSerial() {
       if (!('serial' in navigator)) {
         alert("Web Serial is supported in Google Chrome, Microsoft Edge, and Opera on PC, Mac, Linux, and Android via OTG.");
         return;
       }
 
+      if (!window.isSecureContext) {
+        const message = "Web Serial requires a secure browser context. Open this dashboard from http://localhost or HTTPS, not an unsupported preview.";
+        appendLog(message, true);
+        setConnected(false, "Web Serial Requires localhost/HTTPS");
+        alert(message);
+        return;
+      }
+
       try {
-        serialPort = await navigator.requestPort();
+        serialPort = await navigator.serial.requestPort();
         await serialPort.open({ baudRate: 115200 });
         setConnected(true, "USB Serial Connected");
         document.getElementById('btnSerial').textContent = "🔌 Disconnect USB";
         document.getElementById('btnSerial').onclick = disconnectWebSerial;
 
         const textDecoder = new TextDecoderStream();
-        serialPort.readable.pipeTo(textDecoder.writable);
+        serialInputDone = serialPort.readable.pipeTo(textDecoder.writable);
         serialReader = textDecoder.readable.getReader();
 
         let buffer = '';
@@ -588,20 +598,66 @@
           }
         }
       } catch (err) {
-        console.error("Serial connection error:", err);
-        setConnected(false, "Serial Error / Cancelled");
+        if (err.name === 'NotFoundError') {
+          appendLog("USB serial connection cancelled: no port was selected.", true);
+          setConnected(false, "USB Serial Selection Cancelled");
+        } else if (!serialDisconnecting) {
+          console.error("Serial connection error:", err);
+          appendLog(`USB serial error: ${err.name || 'Error'}${err.message ? ` - ${err.message}` : ''}`, true);
+          setConnected(false, "USB Serial Error");
+        }
+      } finally {
+        if (serialReader) {
+          serialReader.releaseLock();
+          serialReader = null;
+        }
+        if (serialInputDone) {
+          try {
+            await serialInputDone;
+          } catch (err) {
+            if (!serialDisconnecting && err.name !== 'AbortError') {
+              console.warn("Serial decoder stopped:", err);
+            }
+          }
+          serialInputDone = null;
+        }
+        if (serialPort && !serialDisconnecting) {
+          try {
+            await serialPort.close();
+          } catch (err) {
+            console.warn("Serial port close failed:", err);
+          }
+          serialPort = null;
+        }
+        serialDisconnecting = false;
+        if (!serialPort) {
+          document.getElementById('btnSerial').textContent = "🔌 Connect via USB (Web Serial)";
+          document.getElementById('btnSerial').onclick = connectWebSerial;
+        }
       }
     }
 
     async function disconnectWebSerial() {
+      serialDisconnecting = true;
       if (serialReader) {
-        await serialReader.cancel();
-        serialReader = null;
+        try {
+          await serialReader.cancel();
+        } catch (err) {
+          console.warn("Serial reader cancellation failed:", err);
+        }
       }
-      if (serialPort) {
-        await serialPort.close();
-        serialPort = null;
+      if (serialInputDone) {
+        try {
+          await serialInputDone;
+        } catch (err) {
+          if (err.name !== 'AbortError') console.warn("Serial stream cancellation failed:", err);
+        }
       }
+      if (serialPort) await serialPort.close();
+      serialReader = null;
+      serialInputDone = null;
+      serialPort = null;
+      serialDisconnecting = false;
       setConnected(false, "Disconnected");
       document.getElementById('btnSerial').textContent = "🔌 Connect via USB (Web Serial)";
       document.getElementById('btnSerial').onclick = connectWebSerial;
