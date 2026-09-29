@@ -66,7 +66,7 @@ PawState demonstrates how a hard real-time operating system (**μT-Kernel 3.0**)
 | :--- | :--- | :---: | :--- | :---: | :--- |
 | **`tsk_imu_sampler`** | `imu_sampler_task()` | `1` | Woken by cyclic handler every 20 ms | 512 B | Acquires 6-axis data (Accel X,Y,Z + Mag X,Y,Z) from LSM303AGR via 400kHz I2C (`sem_i2c`). Pushes samples into a 256-entry lock-free circular buffer. Signals `EVT_NEW_SAMPLES` every 62 samples (1.24s). |
 | **`tsk_feature_extractor`** | `feature_extractor_task()` | `5` | Event-driven (`EVT_NEW_SAMPLES`) | 1024 B | Peeks 125 samples (2.5s window) from buffer, computes 6-D fixed-point (Q16.16) features, consumes 62 samples, updates `current_features` under `sem_feature_buf`, and signals `EVT_FEATURES_READY`. |
-| **`tsk_classifier`** | `tinyml_classifier_task()` | `10` | Event-driven (`EVT_FEATURES_READY`) | 1536 B | Copies features, runs INT8 neural network inference, applies temporal debouncing, updates 5×5 LED matrix. If an anxiety spike is detected (Classes 3 & 4), immediately sounds the 2kHz buzzer and signals `EVT_ANXIETY_SPIKE`. |
+| **`tsk_classifier`** | `tinyml_classifier_task()` | `10` | Event-driven (`EVT_FEATURES_READY`) | 2048 B | Copies features, runs INT8 neural network inference, applies temporal debouncing, updates 5×5 LED matrix. If an anxiety spike is detected (Classes 3 & 4), immediately sounds the 2kHz buzzer and signals `EVT_ANXIETY_SPIKE`. |
 | **`tsk_ble_logger`** | `ble_logger_task()` | `15` | Event-driven (`mbf_ble_events` / `EVT_ANXIETY_SPIKE`) | 1024 B | Dequeues state events and broadcasts BLE GATT notifications. In offline mode, caches up to 2880 events in a circular buffer, approximately 24 hours at two transitions per minute. |
 
 ### 2.2 Cyclic Handlers & Interrupt Service Contexts
@@ -191,10 +191,48 @@ To eliminate question-mark flickering and transient noise without compromising e
 ### 7.2 SRAM Allocation (128 KB Total)
 
 - **Kernel Data Structures & System Stacks:** ~4.2 KB
-- **Application Task Stacks (4 Tasks):** ~4.0 KB
+- **Application Task Stacks (4 Tasks):** ~4.6 KB (512 B + 1024 B + 2048 B + 1024 B)
 - **IMU Circular Ring Buffer (256 samples):** ~3.1 KB
 - **BLE Offline Cache & Static Buffers:** ~2.5 KB
-- **Remaining SRAM Headroom:** **> 114 KB (89.0% Free)**
+- **Remaining SRAM Headroom:** **> 113 KB (88.3% Free)**
+
+---
+
+## 8. Architectural Extensibility & Future Scaling
+
+The strict modularity of the μT-Kernel 3.0 priority-preemptive architecture allows PawState to seamlessly scale with future capabilities without disrupting hard real-time guarantees:
+
+### 8.1 Multi-Task Pipeline Expansion
+
+```
++-----------------------------------------------------------------------------------------+
+|                    Expanded μT-Kernel 3.0 Task Priority Hierarchy                       |
++-----------------------------------------------------------------------------------------+
+| Priority  1: tsk_imu_sampler        (50 Hz hard real-time IMU acquisition)              |
+| Priority  2: tsk_power_manager      (System OFF sleep & wake-on-motion coordination)    |
+| Priority  5: tsk_feature_extractor  (Biomechanical Q16.16 sliding window calculation)   |
+| Priority  7: tsk_audio_classifier   (Acoustic vocalization inference: bark/whimper)     |
+| Priority 10: tsk_classifier         (Multi-modal TinyML neural network inference)       |
+| Priority 12: tsk_nvm_storage        (Flash Data Storage / NVMC persistent event logging)|
+| Priority 15: tsk_ble_logger         (SoftDevice S140 GATT broadcast & cloud uplink)     |
++-----------------------------------------------------------------------------------------+
+```
+
+1. **Acoustic Co-Processor Task (`tsk_audio_classifier`, Priority 7):**
+   The micro:bit v2 includes an on-board MEMS microphone. An event-driven audio task can compute short-time Fourier transforms (STFT) or log-mel spectrogram features to classify distress whining, whimpering, and territorial barking, feeding an audio confidence flag into `flg_pipeline` alongside the IMU posture vector.
+
+2. **Persistent Non-Volatile Storage Task (`tsk_nvm_storage`, Priority 12):**
+   By offloading flash writes to a dedicated lower-priority task, high-latency flash page erases (which can take 10–50 ms on NOR flash) will never interrupt 50 Hz IMU sensor sampling.
+
+3. **Power Management Coordinator (`tsk_power_manager`, Priority 2):**
+   Integrates with μT-Kernel 3.0 power management (`power_save.c`). When `tsk_classifier` detects resting posture for > 5 minutes, this task configures the LSM303AGR into wake-on-motion threshold interrupt mode and switches the nRF52833 to ultra-low-power tickless sleep.
+
+### 8.2 RTOS Portability Across TRON Hardware Platforms
+
+The hardware abstraction layer (HAL) implemented in `sample-pawstate/drivers/` isolates architecture-specific register accesses. PawState can be ported to other μT-Kernel 3.0 supported targets:
+- **Renesas RX231 / RX65N:** Industrial-grade veterinary clinic and shelter installations.
+- **Raspberry Pi Pico (RP2040 Cortex-M0+ Dual Core):** Core 0 executes IMU sampling and RTOS scheduling; Core 1 dedicates full compute cycles to INT8 audio and kinematic inference.
+- **Espressif ESP32-S3 (Xtensa Dual-Core + BLE/Wi-Fi):** Direct cloud-connected canine telemetry collar without intermediate phone bridges.
 
 ---
 *PawState — Engineered for Canine Welfare on μT-Kernel 3.0 & BBC micro:bit v2*

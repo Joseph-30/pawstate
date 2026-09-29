@@ -176,7 +176,7 @@ Test the physical motions with the micro:bit in your hand:
 | :--- | :---: | :--- | :---: | :--- |
 | **`tsk_imu_sampler`** | `1` (Highest) | 50 Hz (20 ms) | 512 B | Woken by cyclic handler `cyc_imu_sample`. Samples LSM303AGR accelerometer and magnetometer via 400kHz I2C (`sem_i2c`). Writes raw samples lock-free into a 256-entry circular buffer. Signals `EVT_NEW_SAMPLES` every 62 samples. |
 | **`tsk_feature_extractor`** | `5` | ~1.24 s hop | 1024 B | Waits on `EVT_NEW_SAMPLES`. Peeks 125 samples (2.5s window), extracts 6-D fixed-point (Q16.16) features, consumes 62 samples, updates `current_features` under `sem_feature_buf`, and flags `EVT_FEATURES_READY`. |
-| **`tsk_classifier`** | `10` | Event-driven | 1536 B | Waits on `EVT_FEATURES_READY`. Executes INT8 neural network forward pass, applies temporal debouncing, updates 5×5 LED matrix. If an anxiety spike occurs (Classes 3 & 4), immediately triggers the 2kHz buzzer and flags `EVT_ANXIETY_SPIKE`. |
+| **`tsk_classifier`** | `10` | Event-driven | 2048 B | Waits on `EVT_FEATURES_READY`. Executes INT8 neural network forward pass, applies temporal debouncing, updates 5×5 LED matrix. If an anxiety spike occurs (Classes 3 & 4), immediately triggers the 2kHz buzzer and flags `EVT_ANXIETY_SPIKE`. |
 | **`tsk_ble_logger`** | `15` | Event-driven | 1024 B | Receives state events via message buffer `mbf_ble_events`. The default build logs through the BLE abstraction stub; the planned SoftDevice build will broadcast GATT notifications. Offline mode reserves 2880 transitions, approximately 24 hours at two transitions per minute. |
 
 ### Synchronization & Communication Primitives
@@ -298,19 +298,38 @@ c:\pawstate\
 
 ## 10. Current Limitations & Future Roadmap
 
-### Near-term accuracy and model work
+### 10.1 Near-Term Model & Empirical Validation
 
-1. Collect dog-worn recordings across breeds, collar positions, environments, and repeated sessions.
-2. Add dog- and session-independent train/validation/test splits to prevent leakage between windows from the same recording.
-3. Tune features, class definitions, confidence calibration, and temporal debouncing against held-out canine data.
-4. Requantize and benchmark the revised model on the nRF52833, recording accuracy, RAM, Flash, and inference-time budgets.
+1. **Canine Field Trials:** Collect dog-worn recordings across diverse breeds (varying neck lengths, body masses, and gaits), collar positions, harnesses, and environments with veterinary oversight.
+2. **Leakage-Free Validation:** Implement strict dog- and session-independent splits (leave-one-dog-out cross-validation) to prevent temporal correlation leakage between windows.
+3. **Hyperparameter Tuning:** Refine Q16.16 feature extraction thresholds, confidence calibration, and temporal debouncer window depths against held-out canine validation sets.
+4. **Hardware Benchmarking:** Benchmark edge execution time, dynamic current draw, and inference jitter across battery voltage droop curves on the nRF52833.
 
-### Hardware and product work
+### 10.2 Hardware, Wireless & RTOS Integration
 
-1. Complete SoftDevice S140 integration, GATT service registration, connection events, CCCD handling, and real notifications.
-2. Replace the BLE stub with hardware-backed advertising and state/anxiety characteristics; validate with nRF Connect and a phone application.
-3. Measure sensor-to-alert latency, sampling jitter, power consumption, battery life, and behavior-class confusion on hardware.
-4. Run a controlled dog-worn pilot with appropriate welfare oversight and report limitations before making clinical or welfare claims.
+1. **Nordic SoftDevice S140 GATT Stack:** Transition from the current local event stub to full SoftDevice GATT integration with custom PawState Service, CCCD subscription handling, and phone notifications.
+2. **Companion Mobile Application:** Complete the cross-platform Flutter/React Native mobile app for seamless BLE pairing, real-time alert popups, and automated offline historical burst sync.
+3. **Non-Volatile Flash Event Logging:** Integrate Nordic Flash Data Storage (FDS) / NVMC drivers into `tsk_ble_logger` to persist the 2880-entry circular ring buffer across power cycles and battery swaps.
+
+### 10.3 Long-Term Project Expansion & Future Scopes
+
+1. **Multi-Sensor Physiological Fusion:**
+   - **Photoplethysmography (PPG) Pulse Sensor:** Integrate an optical pulse sensor on the inner collar band to measure Canine Heart Rate Variability (HRV). Low HRV directly indicates sympathetic nervous system dominance (acute panic, fear, distress), providing a physiological ground truth complementary to kinetic posture.
+   - **Acoustic Vocalization Classification:** Leverage the built-in MEMS microphone on BBC micro:bit v2 to classify canine vocalizations (distress whimpers, separation barking, growling) synchronized in time with kinetic panic pacing.
+   - **Sub-Dermal Temperature Sensing:** Add an ambient/contact thermistor to detect hyperthermia and heat exhaustion early during high-energy play in warm climates.
+
+2. **Ultra-Low-Power Optimization & Kinetic Energy Harvesting:**
+   - **Hardware Wake-On-Motion:** Utilize the LSM303AGR `INT1` inertial interrupt to wake the Cortex-M4 from nRF52833 System OFF deep sleep (< 2.0 μA) only upon movement detection, extending 2×AAA battery life from days to multiple months.
+   - **μT-Kernel 3.0 Dynamic Power Management:** Implement tickless idle scheduling within `hw_setting.c` to power-gate unused peripherals (PWM, LED scan, I2C) during resting states.
+   - **Piezoelectric Kinetic Harvesting:** Integrate a collar-flex kinetic harvester to recharge an onboard LiFePO4 cell from the dog's natural daily locomotion.
+
+3. **Edge AI Continual Learning & Breed-Adaptive Personalization:**
+   - **On-Device Biomechanical Calibration:** Automatically calibrate variance and cadence baselines during the dog's first 24 hours of wear, adapting the classifier dynamically whether worn by a 3 kg Chihuahua or a 60 kg Mastiff.
+   - **Federated Edge Learning:** Support privacy-preserving federated model parameter updates, training global models on aggregated gradient updates without transmitting raw private telemetry to the cloud.
+
+4. **Veterinary Telemedicine & Working Dog Fleet Monitoring:**
+   - **Longitudinal Clinical Dashboards:** Provide veterinary clinicians with automated weekly posture histograms to monitor post-operative orthopedic recovery, arthritis progression, separation anxiety treatment efficacy, and Canine Cognitive Dysfunction (dementia).
+   - **Long-Range LoRaWAN / Cellular Expansion:** Develop an add-on daughterboard for search-and-rescue, military working dogs, and livestock guardians requiring multi-kilometer telemetry outside Bluetooth range.
 
 The BLE service described in [Operation Manual section 6.1](docs/OPERATION_MANUAL.md#61-direct-bluetooth-low-energy-ble-mobile-connection) is therefore a planned interface, not a currently demonstrated feature.
 

@@ -133,8 +133,8 @@ When the classifier detects a transition to `ANXIOUS_PACING` or `ALERT_FREEZE` w
 2. **Message buffer** receives high-priority event with `is_anxiety=1`
 3. **Speaker** plays triple-beep alert pattern (2 kHz, 200ms each)
 4. **LED matrix** shows exclamation mark (anxious) or square (freeze)
-5. **BLE notification** sent on dedicated anxiety characteristic
-6. Total latency: **< 30ms** from classification to BLE push
+5. **BLE event queued** into message buffer for notification (local serial telemetry emitted immediately; SoftDevice radio notification is planned)
+6. Total latency: **< 30ms** from classification to local buzzer/LED alert trigger
 
 ### Verifying Actions via Serial Console
 
