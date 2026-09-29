@@ -24,6 +24,14 @@
 - **Multi-Modal Alerting:** Immediate on-collar audio-visual feedback (5×5 LED matrix + 2 kHz acoustic buzzer) paired with Bluetooth Low Energy (BLE) mobile push notifications and offline ring buffer sync.
 - **Ultralight Edge Footprint:** Custom pure C INT8 feedforward engine requires **< 500 bytes code** and **290 bytes weights**, consuming < 10% of available Flash and RAM.
 
+### Current Prototype Status
+
+This submission is an independently verified prototype, not a completed canine field trial. The model and firmware have been tested with deterministic synthetic sensor windows and hand-operated board demonstrations; the team has not yet completed a live demonstration on a dog. Further labelled canine data, model optimisation, and hardware measurements are required before making production-level accuracy, latency, battery-life, or welfare claims.
+
+- **Verified:** clean firmware build, generated HEX reproducibility, fixed-point/INT8 simulation, sensitivity cases, LED patterns, and local USB dashboard tooling.
+- **Not yet demonstrated:** a dog-worn trial, statistically measured real-world accuracy, BLE phone communication, battery life, or end-to-end field latency.
+- **BLE status:** the firmware contains the event API and a no-radio stub for local testing. SoftDevice S140 GATT registration, connection handling, and real notifications remain future integration work.
+
 ---
 
 ## 2. Official Submission Materials & Documentation
@@ -44,6 +52,17 @@ The repository has two valid entry points:
 
 - `mtk3/mtkernel_3/sample-pawstate/` is the **canonical firmware source** compiled by the checked-in Makefile.
 - `sample-pawstate/` is a synchronized source mirror retained for standalone inspection and Python verification. Keep both trees identical when changing firmware source; the training script synchronizes only `model_data.h`.
+- Do **not** Git-ignore either application tree. Ignoring the canonical tree breaks a clean firmware build; ignoring the mirror makes the repository incomplete for inspection and can leave model headers or source files out of sync. Generated objects, HEX files other than the root submission HEX, and downloaded dataset CSVs are the items that should remain ignored.
+
+To check source parity from PowerShell:
+
+```powershell
+$leftRoot = (Resolve-Path sample-pawstate).Path
+$rightRoot = (Resolve-Path mtk3/mtkernel_3/sample-pawstate).Path
+$left = Get-ChildItem sample-pawstate -Recurse -File -Include *.c,*.h | ForEach-Object { [pscustomobject]@{ Path = $_.FullName.Substring($leftRoot.Length); Hash = (Get-FileHash $_.FullName).Hash } }
+$right = Get-ChildItem mtk3/mtkernel_3/sample-pawstate -Recurse -File -Include *.c,*.h | ForEach-Object { [pscustomobject]@{ Path = $_.FullName.Substring($rightRoot.Length); Hash = (Get-FileHash $_.FullName).Hash } }
+Compare-Object $left $right -Property Path,Hash
+```
 
 ### Python environment
 
@@ -158,7 +177,7 @@ Test the physical motions with the micro:bit in your hand:
 | **`tsk_imu_sampler`** | `1` (Highest) | 50 Hz (20 ms) | 512 B | Woken by cyclic handler `cyc_imu_sample`. Samples LSM303AGR accelerometer and magnetometer via 400kHz I2C (`sem_i2c`). Writes raw samples lock-free into a 256-entry circular buffer. Signals `EVT_NEW_SAMPLES` every 62 samples. |
 | **`tsk_feature_extractor`** | `5` | ~1.24 s hop | 1024 B | Waits on `EVT_NEW_SAMPLES`. Peeks 125 samples (2.5s window), extracts 6-D fixed-point (Q16.16) features, consumes 62 samples, updates `current_features` under `sem_feature_buf`, and flags `EVT_FEATURES_READY`. |
 | **`tsk_classifier`** | `10` | Event-driven | 1536 B | Waits on `EVT_FEATURES_READY`. Executes INT8 neural network forward pass, applies temporal debouncing, updates 5×5 LED matrix. If an anxiety spike occurs (Classes 3 & 4), immediately triggers the 2kHz buzzer and flags `EVT_ANXIETY_SPIKE`. |
-| **`tsk_ble_logger`** | `15` | Event-driven | 1024 B | Receives state events via message buffer `mbf_ble_events`. Broadcasts BLE GATT notifications. In offline mode, caches up to 32 transitions in an onboard circular buffer and auto-replays upon reconnection. |
+| **`tsk_ble_logger`** | `15` | Event-driven | 1024 B | Receives state events via message buffer `mbf_ble_events`. The default build logs through the BLE abstraction stub; the planned SoftDevice build will broadcast GATT notifications. Offline mode reserves 2880 transitions, approximately 24 hours at two transitions per minute. |
 
 ### Synchronization & Communication Primitives
 
@@ -277,7 +296,27 @@ c:\pawstate\
 
 ---
 
-## 10. TRON Contest Compliance Summary
+## 10. Current Limitations & Future Roadmap
+
+### Near-term accuracy and model work
+
+1. Collect dog-worn recordings across breeds, collar positions, environments, and repeated sessions.
+2. Add dog- and session-independent train/validation/test splits to prevent leakage between windows from the same recording.
+3. Tune features, class definitions, confidence calibration, and temporal debouncing against held-out canine data.
+4. Requantize and benchmark the revised model on the nRF52833, recording accuracy, RAM, Flash, and inference-time budgets.
+
+### Hardware and product work
+
+1. Complete SoftDevice S140 integration, GATT service registration, connection events, CCCD handling, and real notifications.
+2. Replace the BLE stub with hardware-backed advertising and state/anxiety characteristics; validate with nRF Connect and a phone application.
+3. Measure sensor-to-alert latency, sampling jitter, power consumption, battery life, and behavior-class confusion on hardware.
+4. Run a controlled dog-worn pilot with appropriate welfare oversight and report limitations before making clinical or welfare claims.
+
+The BLE service described in [Operation Manual section 6.1](docs/OPERATION_MANUAL.md#61-direct-bluetooth-low-energy-ble-mobile-connection) is therefore a planned interface, not a currently demonstrated feature.
+
+---
+
+## 11. TRON Contest Compliance Summary
 
 1. **Native μT-Kernel 3.0 Conformance:** Fully leverages native μT-Kernel tasks, semaphores, event flags, message buffers, and cyclic handlers without external RTOS abstractions.
 2. **Deterministic Hard Real-Time Execution:** Priority-preemptive scheduling guarantees 50 Hz IMU sensor integrity while running machine learning and communication tasks asynchronously.

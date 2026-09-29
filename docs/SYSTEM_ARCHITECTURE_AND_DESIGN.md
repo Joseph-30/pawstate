@@ -11,6 +11,10 @@
 
 ## 1. Architectural Philosophy & Design Principles
 
+### Prototype scope
+
+The current implementation and independent checks cover the RTOS pipeline, synthetic sensor scenarios, fixed-point/INT8 inference, local LED/buzzer behavior, and firmware build. A dog-worn field trial has not been completed. The BLE GATT service and phone notifications described in this document are planned SoftDevice integration work; the default build uses a no-radio stub.
+
 PawState demonstrates how a hard real-time operating system (**μT-Kernel 3.0**) combined with deterministic **TinyML edge intelligence** can transform an accessible, low-cost microcontroller (BBC micro:bit v2) into a mission-critical veterinary wearable.
 
 ### Core Engineering Principles

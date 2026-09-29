@@ -7,6 +7,8 @@
 
 PawState is a collar-mounted embedded system that classifies a dog's emotional and behavioural state in real-time using IMU sensor data, a TinyML neural network classifier, and BLE notifications to a smartphone — all orchestrated by the μT-Kernel 3.0 real-time operating system.
 
+This directory is the tracked inspection mirror. The canonical firmware build uses `mtk3/mtkernel_3/sample-pawstate/`. The current submission is independently verified with synthetic sensor windows and hand-operated board demonstrations; a dog-worn trial and working SoftDevice-backed BLE phone link are not yet available.
+
 ### Behavioural States Classified
 
 | State | Description | LED Pattern |
@@ -22,7 +24,7 @@ PawState is a collar-mounted embedded system that classifies a dog's emotional a
 - **50 Hz IMU Sampling** — 6-axis data (3 accel + 3 magnetometer) from LSM303AGR
 - **4 Prioritised RTOS Tasks** — Hard real-time guarantees via μT-Kernel 3.0
 - **INT8 Quantised Neural Network** — ~290 bytes, <50ms inference on Cortex-M4
-- **High-Priority Anxiety Alert Path** — BLE notification within ~30ms
+- **High-Priority Anxiety Alert Path** — local event path and buzzer; SoftDevice-backed BLE notification remains planned
 - **Offline State Buffering** — 24h of state history when BLE is disconnected
 - **On-board Speaker Alerts** — Audible beep pattern for anxiety spikes
 - **5×5 LED Status Display** — Real-time behavioural state visualisation

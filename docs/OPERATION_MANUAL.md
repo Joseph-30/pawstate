@@ -7,6 +7,10 @@
 **Operating System:** μT-Kernel 3.0 Real-Time Operating System  
 **Submission Category:** TRON Programming Contest 2026  
 
+### Prototype Status
+
+This is a prototype evaluation manual. The automated model checks and firmware build have been independently verified, and hand-operated board demonstrations are supported. A dog-worn demonstration, statistically measured canine accuracy, battery-life study, and end-to-end BLE phone test have not yet been completed. Treat the BLE and field-performance sections below as planned integration and evaluation procedures.
+
 ---
 
 ## 1. Introduction & Device Overview
@@ -66,7 +70,7 @@ PawState supports two primary operating power modes:
   1. Once power is connected, the micro:bit yellow power LED illuminates.
   2. μT-Kernel 3.0 initializes the hardware peripherals, registers 4 RTOS tasks, and begins 120 Hz LED matrix scanning.
   3. The display illuminates the initial state (Resting `Z` or current movement).
-- **Independence:** In this mode, PawState functions 100% autonomously. Behavioral classifications appear on the 5×5 LED display, anxiety chimes sound from the on-board buzzer, and telemetry is broadcast over Bluetooth Low Energy (BLE).
+- **Independence:** In this mode, PawState functions locally and autonomously. Behavioral classifications appear on the 5×5 LED display and anxiety chimes sound from the on-board buzzer. BLE telemetry is planned but is not enabled in the default no-radio build.
 
 ### 3.2 USB Demonstration & Telemetry Mode
 
@@ -113,12 +117,18 @@ PawState provides three complementary ways to monitor collar status remotely:
 
 ### 6.1 Direct Bluetooth Low Energy (BLE) Mobile Connection
 
-- **Protocol:** Bluetooth 5.0 GATT.
+**Implementation status: planned, not currently demonstrated.** The firmware contains the event API and a no-radio BLE stub for local testing. The default build does not include a working SoftDevice-backed GATT service, phone notifications, or a validated radio link.
+
+The planned interface is:
+
+- **Protocol:** Bluetooth 5.0 GATT using Nordic SoftDevice S140.
 - **Broadcast Name:** `PawState`
-- **Supported Apps:** nRF Connect (iOS/Android), LightBlue, Web Bluetooth browsers.
-- **Custom GATT Welfare Service UUID:** `0000180D-0000-1000-8000-00805F9B34FB` (Canine Health Profile)
-  - **Behavior State Characteristic (`UUID: 0x2A37`):** Notifies 1-byte state ID (`0`=Resting, `1`=Walking, `2`=Playing, `3`=Pacing, `4`=Freeze) + 1-byte confidence percentage ($0–100\%$) + 4-byte uptime timestamp.
-  - **Anxiety Alert Characteristic (`UUID: 0x2A3F`):** High-priority notification sent immediately when an anxiety spike occurs, triggering phone vibration and banner alerts.
+- **Target validation apps:** nRF Connect, LightBlue, or a Web Bluetooth client.
+- **Planned service UUID:** `0000180D-0000-1000-8000-00805F9B34FB`.
+- **Planned state characteristic (`UUID: 0x2A37`):** state ID, confidence, and uptime timestamp.
+- **Planned anxiety characteristic (`UUID: 0x2A3F`):** high-priority anxiety event notification.
+
+Do not report these UUIDs or notification timings as demonstrated results until SoftDevice integration, connection handling, CCCD writes, and phone-side reception have been implemented and tested.
 
 ### 6.2 Local Wi-Fi Mobile Dashboard (`dashboard_bridge.py`)
 
@@ -157,9 +167,9 @@ For homes, clinics, or lab demonstrations where the micro:bit is connected via U
 
 When the dog is outside Bluetooth range (e.g., roaming in the yard):
 
-1. **Automatic Detection:** The BLE logger task (`tsk_ble_logger`) monitors connection status.
-2. **Ring Buffer Storage:** Behavioral state changes and timestamped anxiety events are automatically saved into an onboard 2880-entry circular ring buffer, sized for approximately 24 hours at two state transitions per minute.
-3. **Reconnection Burst Sync:** As soon as the dog returns within Bluetooth range, PawState automatically flushes the stored event log to the paired smartphone, ensuring no anxiety spikes are lost.
+1. **Current prototype:** The BLE logger maintains an in-memory 2880-entry event buffer, sized for approximately 24 hours at two state transitions per minute.
+2. **Planned integration:** Once SoftDevice GATT notifications and reconnection handling are implemented, the buffer can be flushed to a paired smartphone.
+3. **Current limitation:** Offline persistence, reconnection delivery, and the claim that no events are lost have not been validated on hardware.
 
 ---
 

@@ -7,11 +7,15 @@
 **Operating System:** μT-Kernel 3.0 Real-Time Operating System  
 **Submission Category:** TRON Programming Contest 2026  
 
+### Verification Scope and Current Status
+
+This procedure verifies the reproducible prototype path: firmware compilation, deterministic synthetic sensor scenarios, fixed-point/INT8 model parity, LED rendering, and hand-operated board demonstrations. The team has not demonstrated the system on a dog. Real canine accuracy, BLE phone communication, battery life, and end-to-end latency remain future validation work; the BLE service described in the operation manual is a planned interface.
+
 ---
 
 ## 1. Fast-Track Evaluation (Zero Toolchain Required)
 
-This procedure allows contest evaluators and judges to test the full real-time capabilities of PawState on a physical BBC micro:bit v2 within **under 2 minutes**, without requiring cross-compilers or build environments.
+This procedure allows contest evaluators and judges to test the verified prototype behavior on a physical BBC micro:bit v2 within **under 2 minutes**, without requiring cross-compilers or build environments.
 
 ### 1.1 Equipment Required
 
@@ -110,7 +114,7 @@ Quantization Factors: [2.648e-03, 3.642e-03, 8.866e-01, 7.984e-01, 3.846e+00, 4.
 >>> SCENARIO: Anxious Pacing (Direction Shifts)-> 98% Conf -> 5x5 LED: '!'   [ALERT ACTIVE] [PASS]
 >>> SCENARIO: Alert Freeze (Posture Stiffening)-> 67% Conf -> 5x5 LED: '[]'  [ALERT ACTIVE] [PASS]
 ================================================================================
-ALL VERIFICATION CHECKS COMPLETED: 100% PASS
+ALL SYNTHETIC VERIFICATION CHECKS COMPLETED: PASS
 ================================================================================
 ```
 
@@ -216,7 +220,9 @@ If modifying neural network architecture or training distributions:
 | **TRON / μT-Kernel 3.0 Conformance** | Uses native μT-Kernel tasks, semaphores (`sem_i2c`, `sem_feature_buf`), event flags (`flg_pipeline`), message buffers (`mbf_ble_events`), and cyclic handlers (`cyc_imu_sample`, `cyc_led_refresh`). | **100% Native μT-Kernel 3.0** |
 | **Real-Time Determinism** | 50 Hz IMU sampling driven by hardware timer cyclic handler. Never drops samples during ML inference or display scanning. | **Jitter < 20 μs** |
 | **Edge Intelligence (TinyML)** | Pure C INT8 feedforward engine without TF-Lite Micro bloat. Flash usage: < 500 bytes code, 290 bytes weights. | **Inference Time < 2.5 ms** |
-| **Multi-Modal Alerting** | 5×5 LED matrix display + 2 kHz hardware PWM acoustic chime + BLE GATT alerts. | **Immediate (<30 ms latency)** |
+| **Local Alerting** | 5×5 LED matrix display + 2 kHz hardware PWM acoustic chime. | **Implemented; hardware timing not independently measured** |
+| **BLE GATT Alerts** | Event API and no-radio stub exist; SoftDevice GATT integration is planned. | **Not yet demonstrated** |
+| **Canine Validation** | Synthetic scenarios and hand demonstrations are available. | **Dog-worn trial not completed** |
 | **Code Cleanliness & Documentation** | Strict directory structure, documented canonical tree, and comprehensive manuals. | **Review required before release** |
 
 ---
