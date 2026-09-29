@@ -1,9 +1,15 @@
 # PawState: Real-Time Canine Welfare & Anxiety Monitor
+
 ## OPERATION MANUAL
+
 **Document Version:** 1.0.0  
 **Target Platform:** BBC micro:bit v2 (Nordic nRF52833 ARM Cortex-M4F)  
 **Operating System:** μT-Kernel 3.0 Real-Time Operating System  
 **Submission Category:** TRON Programming Contest 2026  
+
+### Prototype Status
+
+This is a prototype evaluation manual. The automated model checks and firmware build have been independently verified, and hand-operated board demonstrations are supported. A dog-worn demonstration, statistically measured canine accuracy, battery-life study, and end-to-end BLE phone test have not yet been completed. Treat the BLE and field-performance sections below as planned integration and evaluation procedures.
 
 ---
 
@@ -12,6 +18,7 @@
 **PawState** is an intelligent, collar-mounted wearable device engineered to monitor canine emotional health, physical activities, and sudden acute anxiety episodes in real time. Operating entirely at the edge without cloud dependency, PawState executes high-frequency inertial sensing, 6-dimensional biomechanical feature extraction, and INT8 quantized neural network inference directly on the **BBC micro:bit v2** powered by **μT-Kernel 3.0**.
 
 ### 1.1 Hardware Specifications
+
 - **Microcontroller:** Nordic Semiconductor nRF52833 (ARM Cortex-M4F with hardware FPU @ 64 MHz)
 - **Memory:** 512 KB on-chip Flash, 128 KB SRAM
 - **Inertial Measurement Unit (IMU):** STMicroelectronics LSM303AGR (3-axis accelerometer $\pm 2g$, 3-axis magnetometer) on internal I2C bus (`0x19`, `0x1E`)
@@ -41,7 +48,8 @@ To guarantee accurate biomechanical classification, PawState must be oriented co
                    Z-Axis: Pointing Away from Dog Neck
 ```
 
-### Mounting Guidelines:
+### Mounting Guidelines
+
 1. **Positioning:** Mount the micro:bit vertically against the front or side of the dog's collar using a silicone enclosure or velcro collar strap.
 2. **Axis Alignment:**
    - **X-Axis:** Points downwards toward the dog's chest/ground.
@@ -56,14 +64,16 @@ To guarantee accurate biomechanical classification, PawState must be oriented co
 PawState supports two primary operating power modes:
 
 ### 3.1 Standalone Battery Operation (Daily Canine Wear)
+
 - **Power Source:** Connect an external 2×AAA battery pack (3.0 V) or a single-cell LiFePO4 battery to the micro:bit's 2-pin JST-PH connector.
 - **Boot Sequence:**
   1. Once power is connected, the micro:bit yellow power LED illuminates.
   2. μT-Kernel 3.0 initializes the hardware peripherals, registers 4 RTOS tasks, and begins 120 Hz LED matrix scanning.
   3. The display illuminates the initial state (Resting `Z` or current movement).
-- **Independence:** In this mode, PawState functions 100% autonomously. Behavioral classifications appear on the 5×5 LED display, anxiety chimes sound from the on-board buzzer, and telemetry is broadcast over Bluetooth Low Energy (BLE).
+- **Independence:** In this mode, PawState functions locally and autonomously. Behavioral classifications appear on the 5×5 LED display and anxiety chimes sound from the on-board buzzer. BLE telemetry is planned but is not enabled in the default no-radio build.
 
 ### 3.2 USB Demonstration & Telemetry Mode
+
 - **Power & Data Source:** Connect the micro:bit via micro-USB to a PC, laptop, or USB power bank.
 - **Serial Output:** The device streams real-time diagnostic telemetry over USB CDC UART at **115200 baud, 8-N-1**.
 - **Interactive Dashboards:** Enables connection to the PC Web Serial dashboard or the Wi-Fi mobile bridge server.
@@ -106,21 +116,33 @@ When an acute emotional distress episode is identified, PawState triggers an imm
 PawState provides three complementary ways to monitor collar status remotely:
 
 ### 6.1 Direct Bluetooth Low Energy (BLE) Mobile Connection
-- **Protocol:** Bluetooth 5.0 GATT.
+
+**Implementation status: planned, not currently demonstrated.** The firmware contains the event API and a no-radio BLE stub for local testing. The default build does not include a working SoftDevice-backed GATT service, phone notifications, or a validated radio link.
+
+The planned interface is:
+
+- **Protocol:** Bluetooth 5.0 GATT using Nordic SoftDevice S140.
 - **Broadcast Name:** `PawState`
-- **Supported Apps:** nRF Connect (iOS/Android), LightBlue, Web Bluetooth browsers.
-- **Custom GATT Welfare Service UUID:** `0000180D-0000-1000-8000-00805F9B34FB` (Canine Health Profile)
-  - **Behavior State Characteristic (`UUID: 0x2A37`):** Notifies 1-byte state ID (`0`=Resting, `1`=Walking, `2`=Playing, `3`=Pacing, `4`=Freeze) + 1-byte confidence percentage ($0–100\%$) + 4-byte uptime timestamp.
-  - **Anxiety Alert Characteristic (`UUID: 0x2A3F`):** High-priority notification sent immediately when an anxiety spike occurs, triggering phone vibration and banner alerts.
+- **Target validation apps:** nRF Connect, LightBlue, or a Web Bluetooth client.
+- **Planned service UUID:** `0000180D-0000-1000-8000-00805F9B34FB`.
+- **Planned state characteristic (`UUID: 0x2A37`):** state ID, confidence, and uptime timestamp.
+- **Planned anxiety characteristic (`UUID: 0x2A3F`):** high-priority anxiety event notification.
+
+Do not report these UUIDs or notification timings as demonstrated results until SoftDevice integration, connection handling, CCCD writes, and phone-side reception have been implemented and tested.
 
 ### 6.2 Local Wi-Fi Mobile Dashboard (`dashboard_bridge.py`)
+
 For homes, clinics, or lab demonstrations where the micro:bit is connected via USB:
+
 1. Ensure your PC and smartphone are connected to the same home Wi-Fi network.
 2. Run the bridge script on your PC:
+
    ```powershell
    python dashboard_bridge.py --port COMx --baud 115200
    ```
+
 3. The terminal displays your local network address:
+
    ```
    ======================================================================
    🐾 PawState Real-Time Canine Monitor — Wi-Fi & Web Bridge
@@ -129,11 +151,13 @@ For homes, clinics, or lab demonstrations where the micro:bit is connected via U
      Mobile Phone Dashboard: http://192.168.1.XX:8080
    ======================================================================
    ```
+
 4. Open the `http://192.168.1.XX:8080` URL in Safari or Chrome on your mobile phone.
 5. The mobile screen mirrors the collar's 5×5 LED matrix in real time, displays live confidence graphs, and plays audio alert chimes upon anxiety events!
 
 ### 6.3 Zero-Install Web Serial Dashboard (`pawstate_dashboard.html`)
-1. Open [`pawstate_dashboard.html`](file:///c:/pawstate/pawstate_dashboard.html) directly in Google Chrome or Microsoft Edge.
+
+1. Open [`pawstate_dashboard.html`](../pawstate_dashboard.html) directly in Google Chrome or Microsoft Edge.
 2. Click **"🔌 Connect via USB (Web Serial)"** and choose the `BBC micro:bit CMSIS-DAP` COM port.
 3. No Python or web server required — telemetry is parsed directly in browser JavaScript.
 
@@ -142,9 +166,10 @@ For homes, clinics, or lab demonstrations where the micro:bit is connected via U
 ## 7. Offline Data Logging & Historical Sync
 
 When the dog is outside Bluetooth range (e.g., roaming in the yard):
-1. **Automatic Detection:** The BLE logger task (`tsk_ble_logger`) monitors connection status.
-2. **Ring Buffer Storage:** Behavioral state changes and timestamped anxiety events are automatically saved into an onboard 32-entry non-volatile circular ring buffer.
-3. **Reconnection Burst Sync:** As soon as the dog returns within Bluetooth range, PawState automatically flushes the stored event log to the paired smartphone, ensuring no anxiety spikes are lost.
+
+1. **Current prototype:** The BLE logger maintains an in-memory 2880-entry event buffer, sized for approximately 24 hours at two state transitions per minute.
+2. **Planned integration:** Once SoftDevice GATT notifications and reconnection handling are implemented, the buffer can be flushed to a paired smartphone.
+3. **Current limitation:** Offline persistence, reconnection delivery, and the claim that no events are lost have not been validated on hardware.
 
 ---
 
@@ -162,7 +187,7 @@ When the dog is outside Bluetooth range (e.g., roaming in the yard):
 
 | Symptom | Probable Cause | Corrective Action |
 | :--- | :--- | :--- |
-| **LED matrix remains blank on boot** | Power not connected or corrupt flash. | Check battery voltage (>2.7V). Re-drag [`mtkernel_3.hex`](file:///c:/pawstate/mtkernel_3.hex) onto `MICROBIT` drive. |
+| **LED matrix remains blank on boot** | Power not connected or corrupt flash. | Check battery voltage (>2.7V). Re-drag [`mtkernel_3.hex`](../mtkernel_3.hex) onto `MICROBIT` drive. |
 | **Device displays `?` (Unknown) frequently** | Rapid, erratic hand manipulation or loose collar. | Ensure collar is comfortably snug. Allow 1-2 seconds of steady motion for the 1.24s sliding window to capture cadence. |
 | **No sound during Anxiety Spikes** | Volume disabled or board rev mismatch. | Ensure micro:bit v2 is used (v1 does not have built-in speaker). Check that `P0.00` PWM is enabled. |
 | **Web Serial dashboard cannot connect** | COM port occupied by another terminal. | Close PuTTY, Tera Term, or Arduino Serial Monitor before clicking "Connect" in the dashboard. |

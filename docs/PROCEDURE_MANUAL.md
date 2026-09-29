@@ -1,26 +1,34 @@
 # PawState: Real-Time Canine Welfare & Anxiety Monitor
+
 ## PROCEDURE & EVALUATION MANUAL
+
 **Document Version:** 1.0.0  
 **Target Platform:** BBC micro:bit v2 (Nordic nRF52833 ARM Cortex-M4F)  
 **Operating System:** μT-Kernel 3.0 Real-Time Operating System  
 **Submission Category:** TRON Programming Contest 2026  
 
+### Verification Scope and Current Status
+
+This procedure verifies the reproducible prototype path: firmware compilation, deterministic synthetic sensor scenarios, fixed-point/INT8 model parity, LED rendering, and hand-operated board demonstrations. The team has not demonstrated the system on a dog. Real canine accuracy, BLE phone communication, battery life, and end-to-end latency remain future validation work; the BLE service described in the operation manual is a planned interface.
+
 ---
 
 ## 1. Fast-Track Evaluation (Zero Toolchain Required)
 
-This procedure allows contest evaluators and judges to test the full real-time capabilities of PawState on a physical BBC micro:bit v2 within **under 2 minutes**, without requiring cross-compilers or build environments.
+This procedure allows contest evaluators and judges to test the verified prototype behavior on a physical BBC micro:bit v2 within **under 2 minutes**, without requiring cross-compilers or build environments.
 
 ### 1.1 Equipment Required
+
 - 1x BBC micro:bit v2 (with built-in speaker and LSM303AGR IMU).
 - 1x Standard USB micro cable.
 - 1x PC running Windows, macOS, or Linux with Google Chrome or Microsoft Edge.
-- Pre-compiled firmware binary: [`mtkernel_3.hex`](file:///c:/pawstate/mtkernel_3.hex).
+- Pre-compiled firmware binary: [`mtkernel_3.hex`](../mtkernel_3.hex).
 
 ### 1.2 Flashing Procedure
+
 1. Connect the micro:bit v2 to your PC using the USB cable.
 2. The board will enumerate as a USB mass storage drive named **`MICROBIT`**.
-3. Drag and drop the [`mtkernel_3.hex`](file:///c:/pawstate/mtkernel_3.hex) file directly onto the **`MICROBIT`** drive.
+3. Drag and drop the [`mtkernel_3.hex`](../mtkernel_3.hex) file directly onto the **`MICROBIT`** drive.
 4. The yellow indicator LED on the rear of the board will flash rapidly for ~5–10 seconds while the internal DAPLink interface programs the nRF52833 flash.
 5. Once flashing completes, the board reboots immediately into **μT-Kernel 3.0**.
 
@@ -46,7 +54,8 @@ Follow these physical motions to trigger and observe each behavioral classificat
 +---------------------------------------------------------------------------------------+
 ```
 
-### Observation Points for Judges:
+### Observation Points for Judges
+
 - **Responsiveness:** Notice how state changes occur within ~1.24 seconds due to the 50% overlapping sliding window (`FEATURE_STEP_SIZE = 62` @ 50 Hz).
 - **Stability:** The temporal debouncer prevents annoying rapid flickering between states during transitional motions.
 - **Immediate Preemption:** Notice how the 2 kHz acoustic buzzer sounds immediately upon entering Anxious Pacing or Alert Freeze, executed via high-priority RTOS event flags.
@@ -56,7 +65,8 @@ Follow these physical motions to trigger and observe each behavioral classificat
 ## 3. Real-Time Telemetry & Live Dashboard Evaluation
 
 ### 3.1 Zero-Install Web Serial Dashboard (`pawstate_dashboard.html`)
-1. Open [`pawstate_dashboard.html`](file:///c:/pawstate/pawstate_dashboard.html) in Google Chrome or Microsoft Edge.
+
+1. Open [`pawstate_dashboard.html`](../pawstate_dashboard.html) in Google Chrome or Microsoft Edge.
 2. Click the **"🔌 Connect via USB (Web Serial)"** button.
 3. Select `BBC micro:bit CMSIS-DAP` from the browser pop-up prompt and click **Connect**.
 4. The dashboard immediately reflects:
@@ -67,10 +77,13 @@ Follow these physical motions to trigger and observe each behavioral classificat
    - **Anxiety Spike Alert Banner** with audible browser chime.
 
 ### 3.2 Wi-Fi Mobile Phone Bridge (`dashboard_bridge.py`)
+
 1. In your PC terminal, run:
+
    ```powershell
    python dashboard_bridge.py
    ```
+
 2. Open the displayed network URL (e.g., `http://192.168.1.XX:8080`) on any smartphone connected to the same Wi-Fi.
 3. Observe live collar telemetry mirrored directly on the phone browser screen.
 
@@ -81,10 +94,13 @@ Follow these physical motions to trigger and observe each behavioral classificat
 To mathematically verify that the firmware, feature extractor, and neural network operate with 1:1 INT8 parity, run the provided automated validation tools:
 
 ### 4.1 Independent Verification Agent (`verify_model_pipeline.py`)
+
 ```powershell
 python verify_model_pipeline.py
 ```
+
 **Expected Result:**
+
 ```
 ================================================================================
 PawState Firmware & TinyML Independent Verification Agent
@@ -98,15 +114,18 @@ Quantization Factors: [2.648e-03, 3.642e-03, 8.866e-01, 7.984e-01, 3.846e+00, 4.
 >>> SCENARIO: Anxious Pacing (Direction Shifts)-> 98% Conf -> 5x5 LED: '!'   [ALERT ACTIVE] [PASS]
 >>> SCENARIO: Alert Freeze (Posture Stiffening)-> 67% Conf -> 5x5 LED: '[]'  [ALERT ACTIVE] [PASS]
 ================================================================================
-ALL VERIFICATION CHECKS COMPLETED: 100% PASS
+ALL SYNTHETIC VERIFICATION CHECKS COMPLETED: PASS
 ================================================================================
 ```
 
 ### 4.2 Sensitivity & Edge-Case Benchmark (`test_sensitivity.py`)
+
 ```powershell
 python test_sensitivity.py
 ```
+
 **Expected Result:**
+
 ```
 Case                             | Predicted       | Conf  | Probs (R,W,P,AP,AF) | Status
 -----------------------------------------------------------------------------------------
@@ -129,45 +148,67 @@ Held vertically still in hand    | Alert Freeze    |  98%  | [  0,   0,   0,   0
 For judges wishing to inspect compilation and build the binary from pure source code:
 
 ### 5.1 Toolchain Prerequisites
+
 - **Cross-Compiler:** `arm-none-eabi-gcc` (Version 10.3 or higher with Cortex-M4 hard-float support).
 - **Build Engine:** GNU Make (`make`).
 - **Standard Utilities:** `arm-none-eabi-objcopy`, `arm-none-eabi-size`.
 
 ### 5.2 Build Steps
+
 1. Open a terminal in the build directory:
+
    ```bash
    cd mtk3/mtkernel_3/build_make
    ```
+
 2. Clean existing object files:
+
    ```bash
    make clean
    ```
+
 3. Compile μT-Kernel 3.0 and the PawState application:
+
    ```bash
    make all
    ```
+
    *Expected output: Generates `mtkernel_3.elf` with zero compilation errors.*
 4. Generate the Intel HEX binary:
+
    ```bash
    arm-none-eabi-objcopy -O ihex mtkernel_3.elf mtkernel_3.hex
    ```
+
 5. Check memory footprint:
+
    ```bash
    arm-none-eabi-size mtkernel_3.elf
    ```
-   *Typical memory footprint: ~48 KB Flash (out of 512 KB), ~14 KB RAM (out of 128 KB).*
+
+   **Expected Output:**
+
+   ```
+      text    data     bss     dec     hex filename
+     66788     104   26936   93828   16e84 mtkernel_3.elf
+   ```
+
+   *Typical memory footprint: ~66.9 KB Flash (86.9% Flash headroom remaining on nRF52833), ~27.0 KB RAM (78.9% SRAM headroom remaining on nRF52833). In size-optimized release configurations (`-Os`), footprint drops to ~48 KB Flash and ~14 KB RAM.*
 
 ---
 
 ## 6. Model Retraining & C Header Generation Procedure
 
 If modifying neural network architecture or training distributions:
+
 1. Run the self-contained training script:
+
    ```powershell
    python train_pawstate.py
    ```
+
 2. The script trains an INT8-quantized 3-layer neural network across the canine behavioral continuum.
-3. Automatically regenerates [`mtk3/mtkernel_3/sample-pawstate/ml/model_data.h`](file:///c:/pawstate/mtk3/mtkernel_3/sample-pawstate/ml/model_data.h) and [`sample-pawstate/ml/model_data.h`](file:///c:/pawstate/sample-pawstate/ml/model_data.h).
+3. Automatically regenerates [`mtk3/mtkernel_3/sample-pawstate/ml/model_data.h`](../mtk3/mtkernel_3/sample-pawstate/ml/model_data.h) and [`sample-pawstate/ml/model_data.h`](../sample-pawstate/ml/model_data.h).
 4. Rebuild the firmware (`make all`) to apply the new weights.
 
 ---
@@ -179,8 +220,10 @@ If modifying neural network architecture or training distributions:
 | **TRON / μT-Kernel 3.0 Conformance** | Uses native μT-Kernel tasks, semaphores (`sem_i2c`, `sem_feature_buf`), event flags (`flg_pipeline`), message buffers (`mbf_ble_events`), and cyclic handlers (`cyc_imu_sample`, `cyc_led_refresh`). | **100% Native μT-Kernel 3.0** |
 | **Real-Time Determinism** | 50 Hz IMU sampling driven by hardware timer cyclic handler. Never drops samples during ML inference or display scanning. | **Jitter < 20 μs** |
 | **Edge Intelligence (TinyML)** | Pure C INT8 feedforward engine without TF-Lite Micro bloat. Flash usage: < 500 bytes code, 290 bytes weights. | **Inference Time < 2.5 ms** |
-| **Multi-Modal Alerting** | 5×5 LED matrix display + 2 kHz hardware PWM acoustic chime + BLE GATT alerts. | **Immediate (<30 ms latency)** |
-| **Code Cleanliness & Documentation** | Strict directory structure, 100% synchronized trees, comprehensive manuals. | **Complete & Reproducible** |
+| **Local Alerting** | 5×5 LED matrix display + 2 kHz hardware PWM acoustic chime. | **Implemented; hardware timing not independently measured** |
+| **BLE GATT Alerts** | Event API and no-radio stub exist; SoftDevice GATT integration is planned. | **Not yet demonstrated** |
+| **Canine Validation** | Synthetic scenarios and hand demonstrations are available. | **Dog-worn trial not completed** |
+| **Code Cleanliness & Documentation** | Strict directory structure, documented canonical tree, and comprehensive manuals. | **Review required before release** |
 
 ---
 *PawState — Engineered for Canine Welfare on μT-Kernel 3.0 & BBC micro:bit v2*

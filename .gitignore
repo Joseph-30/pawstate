@@ -3,8 +3,9 @@
 __pycache__/
 *.pyc
 
-# Data
-ML_canine_data/
+# Data files are downloaded locally and are not committed.
+ML_canine_data/*
+!ML_canine_data/README.md
 
 # Build artifacts
 *.o

@@ -82,14 +82,6 @@
  * TinyML Classifier Configuration
  * ========================================================================= */
 
-/** Classification inference period in milliseconds.
- *  DESIGN DECISION: Runs every 5 seconds (every 2 feature windows).
- *  This provides a good balance between responsiveness and power
- *  consumption. State changes in canine behaviour are typically
- *  sustained over >5s, so this cadence is sufficient.
- */
-#define CLASSIFIER_PERIOD_MS        5000
-
 /** Number of behavioural classes */
 #define NUM_BEHAVIOUR_CLASSES       5
 

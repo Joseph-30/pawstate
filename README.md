@@ -1,5 +1,7 @@
 # PawState: Real-Time Canine Welfare & Anxiety Monitoring System
+
 ### Built on BBC micro:bit v2 (nRF52833 Cortex-M4F) and μT-Kernel 3.0 RTOS
+
 **Submission for the TRON Programming Contest 2026**
 
 [![License](https://img.shields.io/badge/license-T--License-blue.svg)](https://www.tron.org/)
@@ -15,11 +17,20 @@
 **PawState** is an intelligent, collar-mounted wearable device engineered to detect and alert on canine emotional stress, panic spikes, and daily behavioral activities in real time. Operating entirely at the edge without cloud latency, PawState executes high-frequency inertial sensor sampling, 6-dimensional fixed-point biomechanical feature extraction, and an ultra-compact **INT8 Quantized Neural Network** directly on the **BBC micro:bit v2** powered by **μT-Kernel 3.0**.
 
 ### Key Technical Achievements
+
 - **Zero Cloud Latency:** All sensor sampling, feature extraction, and ML inference execute locally in micro-watts on the collar.
 - **Hard Real-Time Architecture:** Strict 4-tier μT-Kernel 3.0 task priority model ensures 50 Hz IMU sensor sampling is never interrupted or delayed by heavy mathematical inference or wireless operations.
 - **Fast 1.24s Response Time:** A 50% overlapping sliding window (`FEATURE_STEP_SIZE = 62` @ 50 Hz) cuts latency by **50%** while preserving the 2.5-second observation window needed for stride cadence.
 - **Multi-Modal Alerting:** Immediate on-collar audio-visual feedback (5×5 LED matrix + 2 kHz acoustic buzzer) paired with Bluetooth Low Energy (BLE) mobile push notifications and offline ring buffer sync.
 - **Ultralight Edge Footprint:** Custom pure C INT8 feedforward engine requires **< 500 bytes code** and **290 bytes weights**, consuming < 10% of available Flash and RAM.
+
+### Current Prototype Status
+
+This submission is an independently verified prototype, not a completed canine field trial. The model and firmware have been tested with deterministic synthetic sensor windows and hand-operated board demonstrations; the team has not yet completed a live demonstration on a dog. Further labelled canine data, model optimisation, and hardware measurements are required before making production-level accuracy, latency, battery-life, or welfare claims.
+
+- **Verified:** clean firmware build, generated HEX reproducibility, fixed-point/INT8 simulation, sensitivity cases, LED patterns, and local USB dashboard tooling.
+- **Not yet demonstrated:** a dog-worn trial, statistically measured real-world accuracy, BLE phone communication, battery life, or end-to-end field latency.
+- **BLE status:** the firmware contains the event API and a no-radio stub for local testing. SoftDevice S140 GATT registration, connection handling, and real notifications remain future integration work.
 
 ---
 
@@ -35,17 +46,83 @@ As required for evaluation and execution, comprehensive manuals and architectura
 
 ---
 
-## 3. Fast-Track Evaluation (Under 2 Minutes)
+## 3. Reproducible Setup
+
+The repository has two valid entry points:
+
+- `mtk3/mtkernel_3/sample-pawstate/` is the **canonical firmware source** compiled by the checked-in Makefile.
+- `sample-pawstate/` is a synchronized source mirror retained for standalone inspection and Python verification. Keep both trees identical when changing firmware source; the training script synchronizes only `model_data.h`.
+- Do **not** Git-ignore either application tree. Ignoring the canonical tree breaks a clean firmware build; ignoring the mirror makes the repository incomplete for inspection and can leave model headers or source files out of sync. Generated objects, HEX files other than the root submission HEX, and downloaded dataset CSVs are the items that should remain ignored.
+
+To check source parity from PowerShell:
+
+```powershell
+$leftRoot = (Resolve-Path sample-pawstate).Path
+$rightRoot = (Resolve-Path mtk3/mtkernel_3/sample-pawstate).Path
+$left = Get-ChildItem sample-pawstate -Recurse -File -Include *.c,*.h | ForEach-Object { [pscustomobject]@{ Path = $_.FullName.Substring($leftRoot.Length); Hash = (Get-FileHash $_.FullName).Hash } }
+$right = Get-ChildItem mtk3/mtkernel_3/sample-pawstate -Recurse -File -Include *.c,*.h | ForEach-Object { [pscustomobject]@{ Path = $_.FullName.Substring($rightRoot.Length); Hash = (Get-FileHash $_.FullName).Hash } }
+Compare-Object $left $right -Property Path,Hash
+```
+
+### Python environment
+
+Use Python 3.9 or newer. From the repository root:
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+### Training data
+
+Download the official [Inertial sensor dataset for Dog Posture Recognition](https://data.mendeley.com/datasets/mpph6bmn7g/1) from Mendeley Data. It is version 1, DOI `10.17632/mpph6bmn7g.1`, and licensed CC BY 4.0. The official ZIP download is [available here](https://data.mendeley.com/public-api/zip/mpph6bmn7g/download/1). You can download and extract it automatically with:
+
+```powershell
+.\download_dataset.ps1
+```
+
+Training expects `df_raw.csv` and `df_dogs.csv` under `ML_canine_data/`. The dataset directory is intentionally excluded from Git because `df_raw.csv` is approximately 546 MB. The tracked [dataset guide](ML_canine_data/README.md) records the source, licence, expected files, and SHA-256 checksums.
+
+After placing the data files, train and regenerate both model headers with:
+
+```powershell
+python train_pawstate.py
+python verify_model_pipeline.py
+python test_sensitivity.py
+```
+
+### Firmware build
+
+Install GNU Make and the Arm GNU Toolchain (`arm-none-eabi-gcc`, `arm-none-eabi-objcopy`, and `arm-none-eabi-size`). Then build the canonical tree:
+
+```powershell
+Set-Location mtk3/mtkernel_3/build_make
+make clean
+make all
+arm-none-eabi-objcopy -O ihex mtkernel_3.elf mtkernel_3.hex
+arm-none-eabi-size mtkernel_3.elf
+```
+
+The generated build output is in `mtk3/mtkernel_3/build_make/`. The root `mtkernel_3.hex` is the tracked submission artifact and must be refreshed from that build before submitting a new firmware version. The build uses the nested application tree, not the root mirror.
+
+---
+
+## 4. Fast-Track Evaluation (Under 2 Minutes)
 
 Judges can evaluate PawState immediately without installing any embedded toolchains:
 
 ### Step 1: Flash Pre-Compiled Firmware
+
 1. Plug a BBC micro:bit v2 into your PC via USB (it appears as a USB drive named `MICROBIT`).
 2. Drag and drop [`mtkernel_3.hex`](mtkernel_3.hex) onto the `MICROBIT` drive.
 3. The board flashes in seconds and boots into **μT-Kernel 3.0**.
 
 ### Step 2: Physical Hand Demonstration Protocol
+
 Test the physical motions with the micro:bit in your hand:
+
 - **Resting (Z):** Place flat on desk $\rightarrow$ Displays **`Z`** (Silent).
 - **Walking (-->):** Gently tilt and rock back-and-forth horizontally $\rightarrow$ Displays **`-->`** (Silent).
 - **Playing (*):** Vigorously shake the board in multiple axes $\rightarrow$ Displays **`*`** (Silent).
@@ -53,12 +130,13 @@ Test the physical motions with the micro:bit in your hand:
 - **Alert Freeze ([]):** Hold vertically upright (head-high stance) motionless $\rightarrow$ Displays **`[]`** and **sounds 2 kHz acoustic chime**.
 
 ### Step 3: Run Real-Time Dashboards
+
 - **Zero-Install Web Serial Dashboard:** Open [`pawstate_dashboard.html`](pawstate_dashboard.html) in Chrome/Edge and click **"Connect via USB"**.
 - **Local Wi-Fi Mobile Bridge:** Run `python dashboard_bridge.py` and open the displayed URL on any smartphone connected to the same Wi-Fi.
 
 ---
 
-## 4. System Architecture & μT-Kernel 3.0 Tasks
+## 5. System Architecture & μT-Kernel 3.0 Tasks
 
 ```
 +---------------------------------------------------------------------------------------+
@@ -98,10 +176,11 @@ Test the physical motions with the micro:bit in your hand:
 | :--- | :---: | :--- | :---: | :--- |
 | **`tsk_imu_sampler`** | `1` (Highest) | 50 Hz (20 ms) | 512 B | Woken by cyclic handler `cyc_imu_sample`. Samples LSM303AGR accelerometer and magnetometer via 400kHz I2C (`sem_i2c`). Writes raw samples lock-free into a 256-entry circular buffer. Signals `EVT_NEW_SAMPLES` every 62 samples. |
 | **`tsk_feature_extractor`** | `5` | ~1.24 s hop | 1024 B | Waits on `EVT_NEW_SAMPLES`. Peeks 125 samples (2.5s window), extracts 6-D fixed-point (Q16.16) features, consumes 62 samples, updates `current_features` under `sem_feature_buf`, and flags `EVT_FEATURES_READY`. |
-| **`tsk_classifier`** | `10` | Event-driven | 1536 B | Waits on `EVT_FEATURES_READY`. Executes INT8 neural network forward pass, applies temporal debouncing, updates 5×5 LED matrix. If an anxiety spike occurs (Classes 3 & 4), immediately triggers the 2kHz buzzer and flags `EVT_ANXIETY_SPIKE`. |
-| **`tsk_ble_logger`** | `15` | Event-driven | 1024 B | Receives state events via message buffer `mbf_ble_events`. Broadcasts BLE GATT notifications. In offline mode, caches up to 32 transitions in an onboard circular buffer and auto-replays upon reconnection. |
+| **`tsk_classifier`** | `10` | Event-driven | 2048 B | Waits on `EVT_FEATURES_READY`. Executes INT8 neural network forward pass, applies temporal debouncing, updates 5×5 LED matrix. If an anxiety spike occurs (Classes 3 & 4), immediately triggers the 2kHz buzzer and flags `EVT_ANXIETY_SPIKE`. |
+| **`tsk_ble_logger`** | `15` | Event-driven | 1024 B | Receives state events via message buffer `mbf_ble_events`. The default build logs through the BLE abstraction stub; the planned SoftDevice build will broadcast GATT notifications. Offline mode reserves 2880 transitions, approximately 24 hours at two transitions per minute. |
 
 ### Synchronization & Communication Primitives
+
 - **`sem_i2c`:** Binary semaphore (`TA_TPRI`) guarding shared I2C bus transactions.
 - **`sem_feature_buf`:** Mutex semaphore protecting the 6-D feature vector between extractor and classifier.
 - **`flg_pipeline`:** Multi-wait event flag (`TA_WMUL`) coordinating pipeline execution stages.
@@ -111,7 +190,7 @@ Test the physical motions with the micro:bit in your hand:
 
 ---
 
-## 5. Canine Behavioral States & 5×5 LED Matrix Displays
+## 6. Canine Behavioral States & 5×5 LED Matrix Displays
 
 | Class ID | Behavior | Biomechanical Profile | 5×5 LED Matrix Icon | Collar Alarm | Mobile Alert |
 | :---: | :--- | :--- | :---: | :---: | :---: |
@@ -120,9 +199,10 @@ Test the physical motions with the micro:bit in your hand:
 | **2** | **Playing** | Violent kinetic bursts ($\text{var} > 17,500$, g-load > 1.35g), jumping, romping. | `*` (Star / Spark) | Silent | Normal Log |
 | **3** | **Anxious Pacing** | Repetitive walking + frequent 180° turns ($\Delta M > 50$ on compass). Stress indicator. | `!` (Exclamation) | **2kHz Chime** | **CRITICAL SPIKE** |
 | **4** | **Alert Freeze** | Sudden tonic immobility ($\text{var} < 1800$), stiff upright neck pitch ($35^\circ-65^\circ$). Fear/threat. | `[]` (Rigid Box) | **2kHz Chime** | **CRITICAL SPIKE** |
-| **0xFF**| **Unknown** | Model confidence $< 50\%$. Debouncer holds prior state to prevent flicker. | `?` (Question Mark)| Silent | Filtered |
+| **0xFF** | **Unknown** | Model confidence $< 50\%$. Debouncer holds prior state to prevent flicker. | `?` (Question Mark) | Silent | Filtered |
 
 ### Hardware 5×5 LED Matrix Patterns
+
 ```
   Resting (Z)       Walking (-->)      Playing (*)     Anxious Pacing (!)   Alert Freeze ([])
   # # # # #         . . # . .          . . # . .           . . # . .            # # # # #
@@ -134,14 +214,16 @@ Test the physical motions with the micro:bit in your hand:
 
 ---
 
-## 6. Verification & Sensitivity Suite
+## 7. Verification & Sensitivity Suite
 
 All components are accompanied by automated verification scripts to ensure 1:1 mathematical parity with the embedded C firmware:
 
 ### 6.1 Sensitivity & Edge-Case Benchmark (`test_sensitivity.py`)
+
 ```bash
 python test_sensitivity.py
 ```
+
 ```
 Case                             | Predicted       | Conf  | Probs (R,W,P,AP,AF) | Status
 -----------------------------------------------------------------------------------------
@@ -158,68 +240,102 @@ Held vertically still in hand    | Alert Freeze    |  98%  | [  0,   0,   0,   0
 ```
 
 ### 6.2 Independent Pipeline Verification (`verify_model_pipeline.py`)
+
 ```bash
 python verify_model_pipeline.py
 ```
+
 Validates the entire pipeline from raw IMU samples through fixed-point feature extraction, INT8 forward propagation, softmax normalization, anxiety alert triggering, and 5×5 LED matrix rendering (**100% PASS**).
 
 ---
 
-## 7. Building from Source
+## 8. Building from Source
 
-### Prerequisites
-- `arm-none-eabi-gcc` (Version 10.3 or higher with Cortex-M4 hard-float support)
-- GNU Make (`make`)
-- Python 3.9+ (with `numpy`, `tensorflow`, `pyserial`)
-
-### Compilation Commands
-```bash
-# 1. Navigate to the μT-Kernel 3.0 build directory
-cd mtk3/mtkernel_3/build_make
-
-# 2. Compile the kernel and PawState application
-make all
-
-# 3. Generate Intel HEX binary for flashing
-arm-none-eabi-objcopy -O ihex mtkernel_3.elf mtkernel_3.hex
-
-# 4. Check memory consumption
-arm-none-eabi-size mtkernel_3.elf
-```
+See [Reproducible Setup](#3-reproducible-setup) for the complete build commands. The generated HEX file in the build directory is not tracked by Git; copy or otherwise promote it to the root `mtkernel_3.hex` only after verification.
 
 ---
 
-## 8. Repository Structure
+## 9. Repository Structure
 
 ```
 c:\pawstate\
 ├── README.md                        # Master contest documentation (this file)
-├── mtkernel_3.hex                   # Pre-compiled flashable binary for micro:bit v2
+├── mtkernel_3.hex                   # Tracked pre-compiled flashable binary for micro:bit v2
 ├── pawstate_dashboard.html          # Zero-install Web Serial & SSE live monitor
 ├── dashboard_bridge.py              # USB-to-HTTP/SSE Wi-Fi bridge for smartphone monitoring
+├── requirements.txt                 # Python training and verification dependencies
+├── download_dataset.ps1             # Official Mendeley dataset downloader and checksum verifier
 ├── test_sensitivity.py              # Physical & hand demonstration benchmark script
 ├── verify_model_pipeline.py         # Independent pipeline verification agent
 ├── train_pawstate.py                # Continuum training & INT8 C header exporter
+├── ML_canine_data/README.md          # Dataset provenance, licence, files, and checksums
 ├── docs/                            # Official Contest Submission Documentation
 │   ├── OPERATION_MANUAL.md          # Comprehensive user & operating manual
 │   ├── PROCEDURE_MANUAL.md          # Step-by-step evaluation procedure for judges
-│   └── SYSTEM_ARCHITECTURE_AND_DESIGN.md # In-depth technical specification
+│   ├── SYSTEM_ARCHITECTURE_AND_DESIGN.md # In-depth technical specification
+│   ├── slides/                      # Presentation slides and LaTeX source
+│   └── reference/                   # Startup roadmap and original proposal documentation
 ├── mtk3/mtkernel_3/                 # Active μT-Kernel 3.0 RTOS Source Tree
 │   ├── build_make/                  # Makefile and build output artifacts
 │   ├── kernel/                      # μT-Kernel 3.0 core OS (scheduler, sync, memory)
 │   ├── sysdepend/microbit/          # nRF52833 hardware initialization & vectors
-│   └── sample-pawstate/             # PawState Application Code (Active Build Root)
+│   └── sample-pawstate/             # PawState Application Code (Canonical Build Root)
 │       ├── app/                     # The 4 RTOS Tasks & Main Entry Point
 │       ├── drivers/                 # Hardware Drivers (LSM303AGR, LED Matrix, PWM Buzzer, BLE)
 │       ├── ml/                      # INT8 Inference Engine & model_data.h
 │       ├── util/                    # Lock-free circular buffer & Q16.16 math utils
 │       └── include/                 # Configuration headers & type definitions
-└── sample-pawstate/                 # Synchronized mirror directory
+└── sample-pawstate/                 # Synchronized source mirror; not compiled by make
 ```
+
+### Source Synchronization & Cleanliness
+
+- **Dual-Tree Synchronization:** The root `sample-pawstate/` is maintained as a clean, synchronized mirror of `mtk3/mtkernel_3/sample-pawstate/`. Both trees contain exactly the same 31 firmware source and header files.
+- **Reference Document Consolidation:** Extraneous scratch scripts (`extract.ps1`) and duplicate `.docx` binary files have been purged from both firmware source trees; historical roadmap and proposal references are preserved under `docs/reference/`.
+- **Active Compilation Root:** Treat `mtk3/mtkernel_3/sample-pawstate/` as canonical when editing firmware, as it is the target compiled by `mtk3/mtkernel_3/build_make/makefile`.
 
 ---
 
-## 9. TRON Contest Compliance Summary
+## 10. Current Limitations & Future Roadmap
+
+### 10.1 Near-Term Model & Empirical Validation
+
+1. **Canine Field Trials:** Collect dog-worn recordings across diverse breeds (varying neck lengths, body masses, and gaits), collar positions, harnesses, and environments with veterinary oversight.
+2. **Leakage-Free Validation:** Implement strict dog- and session-independent splits (leave-one-dog-out cross-validation) to prevent temporal correlation leakage between windows.
+3. **Hyperparameter Tuning:** Refine Q16.16 feature extraction thresholds, confidence calibration, and temporal debouncer window depths against held-out canine validation sets.
+4. **Hardware Benchmarking:** Benchmark edge execution time, dynamic current draw, and inference jitter across battery voltage droop curves on the nRF52833.
+
+### 10.2 Hardware, Wireless & RTOS Integration
+
+1. **Nordic SoftDevice S140 GATT Stack:** Transition from the current local event stub to full SoftDevice GATT integration with custom PawState Service, CCCD subscription handling, and phone notifications.
+2. **Companion Mobile Application:** Complete the cross-platform Flutter/React Native mobile app for seamless BLE pairing, real-time alert popups, and automated offline historical burst sync.
+3. **Non-Volatile Flash Event Logging:** Integrate Nordic Flash Data Storage (FDS) / NVMC drivers into `tsk_ble_logger` to persist the 2880-entry circular ring buffer across power cycles and battery swaps.
+
+### 10.3 Long-Term Project Expansion & Future Scopes
+
+1. **Multi-Sensor Physiological Fusion:**
+   - **Photoplethysmography (PPG) Pulse Sensor:** Integrate an optical pulse sensor on the inner collar band to measure Canine Heart Rate Variability (HRV). Low HRV directly indicates sympathetic nervous system dominance (acute panic, fear, distress), providing a physiological ground truth complementary to kinetic posture.
+   - **Acoustic Vocalization Classification:** Leverage the built-in MEMS microphone on BBC micro:bit v2 to classify canine vocalizations (distress whimpers, separation barking, growling) synchronized in time with kinetic panic pacing.
+   - **Sub-Dermal Temperature Sensing:** Add an ambient/contact thermistor to detect hyperthermia and heat exhaustion early during high-energy play in warm climates.
+
+2. **Ultra-Low-Power Optimization & Kinetic Energy Harvesting:**
+   - **Hardware Wake-On-Motion:** Utilize the LSM303AGR `INT1` inertial interrupt to wake the Cortex-M4 from nRF52833 System OFF deep sleep (< 2.0 μA) only upon movement detection, extending 2×AAA battery life from days to multiple months.
+   - **μT-Kernel 3.0 Dynamic Power Management:** Implement tickless idle scheduling within `hw_setting.c` to power-gate unused peripherals (PWM, LED scan, I2C) during resting states.
+   - **Piezoelectric Kinetic Harvesting:** Integrate a collar-flex kinetic harvester to recharge an onboard LiFePO4 cell from the dog's natural daily locomotion.
+
+3. **Edge AI Continual Learning & Breed-Adaptive Personalization:**
+   - **On-Device Biomechanical Calibration:** Automatically calibrate variance and cadence baselines during the dog's first 24 hours of wear, adapting the classifier dynamically whether worn by a 3 kg Chihuahua or a 60 kg Mastiff.
+   - **Federated Edge Learning:** Support privacy-preserving federated model parameter updates, training global models on aggregated gradient updates without transmitting raw private telemetry to the cloud.
+
+4. **Veterinary Telemedicine & Working Dog Fleet Monitoring:**
+   - **Longitudinal Clinical Dashboards:** Provide veterinary clinicians with automated weekly posture histograms to monitor post-operative orthopedic recovery, arthritis progression, separation anxiety treatment efficacy, and Canine Cognitive Dysfunction (dementia).
+   - **Long-Range LoRaWAN / Cellular Expansion:** Develop an add-on daughterboard for search-and-rescue, military working dogs, and livestock guardians requiring multi-kilometer telemetry outside Bluetooth range.
+
+The BLE service described in [Operation Manual section 6.1](docs/OPERATION_MANUAL.md#61-direct-bluetooth-low-energy-ble-mobile-connection) is therefore a planned interface, not a currently demonstrated feature.
+
+---
+
+## 11. TRON Contest Compliance Summary
 
 1. **Native μT-Kernel 3.0 Conformance:** Fully leverages native μT-Kernel tasks, semaphores, event flags, message buffers, and cyclic handlers without external RTOS abstractions.
 2. **Deterministic Hard Real-Time Execution:** Priority-preemptive scheduling guarantees 50 Hz IMU sensor integrity while running machine learning and communication tasks asynchronously.

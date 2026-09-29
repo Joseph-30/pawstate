@@ -7,10 +7,12 @@
 
 PawState is a collar-mounted embedded system that classifies a dog's emotional and behavioural state in real-time using IMU sensor data, a TinyML neural network classifier, and BLE notifications to a smartphone — all orchestrated by the μT-Kernel 3.0 real-time operating system.
 
+This directory is the tracked inspection mirror. The canonical firmware build uses `mtk3/mtkernel_3/sample-pawstate/`. The current submission is independently verified with synthetic sensor windows and hand-operated board demonstrations; a dog-worn trial and working SoftDevice-backed BLE phone link are not yet available.
+
 ### Behavioural States Classified
 
 | State | Description | LED Pattern |
-|-------|-------------|-------------|
+| ------- | ------------- | ------------- |
 | **Resting** | Lying down or sitting still | Zzz sleep symbol |
 | **Walking** | Steady locomotion, regular gait | Right arrow |
 | **Playing** | High-energy irregular motion | Star |
@@ -22,7 +24,7 @@ PawState is a collar-mounted embedded system that classifies a dog's emotional a
 - **50 Hz IMU Sampling** — 6-axis data (3 accel + 3 magnetometer) from LSM303AGR
 - **4 Prioritised RTOS Tasks** — Hard real-time guarantees via μT-Kernel 3.0
 - **INT8 Quantised Neural Network** — ~290 bytes, <50ms inference on Cortex-M4
-- **High-Priority Anxiety Alert Path** — BLE notification within ~30ms
+- **High-Priority Anxiety Alert Path** — local event path and buzzer; SoftDevice-backed BLE notification remains planned
 - **Offline State Buffering** — 24h of state history when BLE is disconnected
 - **On-board Speaker Alerts** — Audible beep pattern for anxiety spikes
 - **5×5 LED Status Display** — Real-time behavioural state visualisation
@@ -34,7 +36,7 @@ PawState is a collar-mounted embedded system that classifies a dog's emotional a
 ### BBC micro:bit v2 Specifications
 
 | Component | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | SoC | Nordic nRF52833 (ARM Cortex-M4F @ 64 MHz) |
 | Flash | 512 KB |
 | RAM | 128 KB |
@@ -115,7 +117,7 @@ sample-pawstate/
 ### μT-Kernel 3.0 Kernel Objects Used
 
 | Object | Type | Purpose |
-|--------|------|---------|
+| -------- | ------ | --------- |
 | `sem_i2c` | Semaphore | I2C bus mutual exclusion |
 | `sem_feature_buf` | Semaphore | Feature vector buffer protection |
 | `flg_pipeline` | Event Flag | Inter-task signaling (5 flag bits) |
@@ -125,14 +127,14 @@ sample-pawstate/
 
 ### Anxiety Spike Alert Path
 
-When the classifier detects a transition to `ANXIOUS_PACING` or `ALERT_FREEZE` with confidence ≥70%:
+When the classifier detects a transition to `ANXIOUS_PACING` or `ALERT_FREEZE` with confidence ≥55%, it sends the immediate anxiety alert path. Ordinary non-anxiety states at 50-69% confidence remain subject to temporal debouncing; confidence ≥70% switches the displayed state immediately:
 
 1. **EVT_ANXIETY_SPIKE** event flag is set → wakes BLE Logger
 2. **Message buffer** receives high-priority event with `is_anxiety=1`
 3. **Speaker** plays triple-beep alert pattern (2 kHz, 200ms each)
 4. **LED matrix** shows exclamation mark (anxious) or square (freeze)
-5. **BLE notification** sent on dedicated anxiety characteristic
-6. Total latency: **< 30ms** from classification to BLE push
+5. **BLE event queued** into message buffer for notification (local serial telemetry emitted immediately; SoftDevice radio notification is planned)
+6. Total latency: **< 30ms** from classification to local buzzer/LED alert trigger
 
 ### Verifying Actions via Serial Console
 
@@ -147,10 +149,11 @@ If you do not have a dog (or want to test on a desk), you can verify the entire 
    - **Stop Bits**: 1
 
 You will see `tm_printf` log messages dynamically printing out the internal state. For example:
+
 - **Normal state change**: `[ML] State changed to: Walking (Confidence: 85%)`
 - **Anxiety alert**: `[ML] *** ANXIETY SPIKE DETECTED! Triggering Alarm ***`
 
-**To test the Alert Freeze (Square):** Simply leave the board completely still on a flat surface. 
+**To test the Alert Freeze (Square):** Simply leave the board completely still on a flat surface.
 **To test Anxiety Pacing / Playing:** Vigorously shake the micro:bit back and forth. You should see the LED matrix flash an exclamation mark, hear the speaker beep, and see the `ANXIETY SPIKE` log in the console.
 
 ---
@@ -256,23 +259,24 @@ RAM   (rwx) : ORIGIN = 0x20002000, LENGTH = 120K
 
 ### Build & Flash
 
+For this checkout, use the root [`README.md`](../README.md). The checked-in Makefile compiles the canonical copy from `mtk3/mtkernel_3/build_make`; this root tree is an inspection mirror and does not create `build/pawstate.hex`.
+
 ```bash
 # Build the firmware
 make all
 
-# Flash via OpenOCD (DAPLink interface on micro:bit v2)
-openocd -f interface/cmsis-dap.cfg -f target/nrf52.cfg \
-    -c "program build/pawstate.hex verify reset exit"
+# Generate the flashable file from the ELF in the build directory
+arm-none-eabi-objcopy -O ihex mtkernel_3.elf mtkernel_3.hex
 
-# Or copy .hex file to the MICROBIT USB drive
-cp build/pawstate.hex /media/MICROBIT/
+# Or copy the generated .hex file to the MICROBIT USB drive
+cp mtkernel_3.hex /media/MICROBIT/
 ```
 
 ---
 
 ## Replacing Placeholder Model Weights with Trained Weights
 
-The current `ml/model_data.h` contains realistic placeholder weights. To replace with your trained model:
+The checked-in `ml/model_data.h` is generated model data. To replace it with a retrained model, run `python train_pawstate.py` from the repository root; the script writes both the canonical build copy and the inspection mirror.
 
 ### Step 1: Train the Model (Python)
 
@@ -374,12 +378,12 @@ print(f"Quantised model accuracy: {accuracy:.2%}")
 All tuneable parameters are in `include/pawstate_config.h`:
 
 | Parameter | Value | Description |
-|-----------|-------|-------------|
+| ----------- | ------- | ------------- |
 | `IMU_SAMPLE_RATE_HZ` | 50 | IMU sampling frequency |
 | `FEATURE_WINDOW_SIZE` | 125 | Sliding window (2.5s at 50 Hz) |
 | `FEATURE_VECTOR_DIM` | 6 | Number of extracted features |
 | `NUM_BEHAVIOUR_CLASSES` | 5 | Classification output classes |
-| `ANXIETY_SPIKE_CONFIDENCE` | 70% | Threshold for anxiety alerts |
+| `ANXIETY_SPIKE_CONFIDENCE` | 55% | Threshold for anxiety alerts; ordinary state changes use a 70% immediate-switch threshold |
 | `CIRC_BUFFER_CAPACITY` | 256 | IMU sample ring buffer size |
 | `TASK_PRI_IMU_SAMPLER` | 1 | Highest priority |
 | `TASK_PRI_BLE_LOGGER` | 15 | Lowest priority |
@@ -391,7 +395,7 @@ All tuneable parameters are in `include/pawstate_config.h`:
 ## Dependencies
 
 | Dependency | Version | Source | Purpose |
-|-----------|---------|--------|---------|
+| ----------- | --------- | -------- | --------- |
 | μT-Kernel 3.0 | v3.00.07 | [tron-forum/mtkernel_3](https://github.com/tron-forum/mtkernel_3) | RTOS kernel |
 | mtk3_bsp2 | latest | [tron-forum/mtk3_bsp2](https://github.com/tron-forum/mtk3_bsp2) | nRF52833 board support |
 | GNU Arm Toolchain | 12.x+ | [developer.arm.com](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/downloads) | Cross-compiler |
@@ -404,7 +408,7 @@ All tuneable parameters are in `include/pawstate_config.h`:
 ## Team
 
 | Member | Role | Responsibility |
-|--------|------|----------------|
+| -------- | ------ | ---------------- |
 | **Joseph P George** | CEO/CTO, Team Lead | RTOS firmware, system architecture |
 | **Kasinath Salim** | Head of AI/ML | Model training, signal processing |
 | **Evan George Varghese** | Head of Product/Hardware | Hardware integration, mobile app |
