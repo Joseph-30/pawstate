@@ -4,6 +4,9 @@
 
 **Submission for the TRON Programming Contest 2026**
 
+**Author: Joseph P George**
+
+
 [![License](https://img.shields.io/badge/license-T--License-blue.svg)](https://www.tron.org/)
 [![RTOS](https://img.shields.io/badge/RTOS-%CE%BCT--Kernel%203.0-brightgreen.svg)](https://github.com/tron-forum/mtkernel_3)
 [![Platform](https://img.shields.io/badge/Hardware-BBC%20micro%3Abit%20v2-red.svg)](https://microbit.org/)
